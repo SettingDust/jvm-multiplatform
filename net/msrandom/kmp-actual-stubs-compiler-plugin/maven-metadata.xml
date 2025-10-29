@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<metadata>
+  <groupId>net.msrandom</groupId>
+  <artifactId>kmp-actual-stubs-compiler-plugin</artifactId>
+  <versioning>
+    <latest>0.1.0-dust</latest>
+    <release>0.1.0-dust</release>
+    <versions>
+      <version>0.1.0-dust</version>
+    </versions>
+    <lastUpdated>20251029030305</lastUpdated>
+  </versioning>
+</metadata>

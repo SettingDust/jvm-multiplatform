@@ -1,0 +1,82 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "net.msrandom",
+    "module": "kmp-actual-stub-annotations",
+    "version": "1.0.0",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "9.1.0"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.environment": "standard-jvm",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "dependencies": [
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.2.0"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "kmp-actual-stub-annotations-1.0.0.jar",
+          "url": "kmp-actual-stub-annotations-1.0.0.jar",
+          "size": 1339,
+          "sha512": "63ce196ffffad60b46abc45c765f0eb3732cbf2043f8eecca5129d74dcabcfd24c46ae57393a73129e89fbf6bd7703b6a2cde2b63c2837465772acdbb62653fc",
+          "sha256": "47f575205c645f29bc55f21b32a2e6af08e389fb8f9beb0e4144fcad28d1ff7a",
+          "sha1": "3c7c4675d613789e446e5bfeee2bac4170303507",
+          "md5": "5db0df941319c952275c6baffc5d9dc4"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.environment": "standard-jvm",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "dependencies": [
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.2.0"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "kmp-actual-stub-annotations-1.0.0.jar",
+          "url": "kmp-actual-stub-annotations-1.0.0.jar",
+          "size": 1339,
+          "sha512": "63ce196ffffad60b46abc45c765f0eb3732cbf2043f8eecca5129d74dcabcfd24c46ae57393a73129e89fbf6bd7703b6a2cde2b63c2837465772acdbb62653fc",
+          "sha256": "47f575205c645f29bc55f21b32a2e6af08e389fb8f9beb0e4144fcad28d1ff7a",
+          "sha1": "3c7c4675d613789e446e5bfeee2bac4170303507",
+          "md5": "5db0df941319c952275c6baffc5d9dc4"
+        }
+      ]
+    }
+  ]
+}

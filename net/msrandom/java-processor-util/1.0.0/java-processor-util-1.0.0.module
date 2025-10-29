@@ -1,0 +1,226 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "net.msrandom",
+    "module": "java-processor-util",
+    "version": "1.0.0",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "9.1.0"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.environment": "standard-jvm",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "dependencies": [
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.2.0"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "java-processor-util-1.0.0.jar",
+          "url": "java-processor-util-1.0.0.jar",
+          "size": 14355,
+          "sha512": "8947f805c7986804f2b6e10633108b04fab0fb9ed758955e5fbbbd79cb05349ac84138068c6783b9f3948079ed97a037df589e3c7906d57a3179b6ac05e555bb",
+          "sha256": "7cc036314de5d4c4760fc8050d5a0bcc60099eb96fae6fdad571cb21167d952e",
+          "sha1": "82eac434104fdfdd1f5b3ab37baf6e84f5cd60c4",
+          "md5": "484839d96b149b3c685bd4e8eba0f66b"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.environment": "standard-jvm",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "dependencies": [
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.2.0"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "java-processor-util-1.0.0.jar",
+          "url": "java-processor-util-1.0.0.jar",
+          "size": 14355,
+          "sha512": "8947f805c7986804f2b6e10633108b04fab0fb9ed758955e5fbbbd79cb05349ac84138068c6783b9f3948079ed97a037df589e3c7906d57a3179b6ac05e555bb",
+          "sha256": "7cc036314de5d4c4760fc8050d5a0bcc60099eb96fae6fdad571cb21167d952e",
+          "sha1": "82eac434104fdfdd1f5b3ab37baf6e84f5cd60c4",
+          "md5": "484839d96b149b3c685bd4e8eba0f66b"
+        }
+      ]
+    },
+    {
+      "name": "sourcesElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "java-processor-util-1.0.0-sources.jar",
+          "url": "java-processor-util-1.0.0-sources.jar",
+          "size": 4803,
+          "sha512": "8d9f887365e5c0c2b04a6c3c9071e6e3838030df6a21a325a169289a1a6d9bc09d67aa84f4dc998671c48f09857b7d5e0004a46d42b4d1c5db2920792e093a44",
+          "sha256": "54af9e2f9fef4ec30597a83d26784fd85ac27b85e414c629cd866d91cc113bfe",
+          "sha1": "f1d653192d5b914926d3861849463649ea0994ce",
+          "md5": "473133c5a6907ba0dcd9d83c9305ae1b"
+        }
+      ]
+    },
+    {
+      "name": "java11SourcesElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.jvm.version": 11,
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "java-processor-util-1.0.0-java11-sources.jar",
+          "url": "java-processor-util-1.0.0-java11-sources.jar",
+          "size": 2124,
+          "sha512": "3e46600944d71bea2d067ac1106606a3b0d7917495e2c22f1ecbd985bd5e9413415fe9b4ef443b597ade032cb3f9550cfedd6bf4229cfc52aee75789c64afaf1",
+          "sha256": "cac742f9caa2e75565ebcdf0aec6a2591a854f43024d661b0b4531d2fe1293e8",
+          "sha1": "60a36d6f4701818c7b7c439f105d402b0f080ba1",
+          "md5": "499ad6bd16fa58dd79b3e93ca151384e"
+        }
+      ],
+      "capabilities": [
+        {
+          "group": "net.msrandom",
+          "name": "java-processor-util",
+          "version": "1.0.0"
+        }
+      ]
+    },
+    {
+      "name": "java11ApiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.environment": "standard-jvm",
+        "org.gradle.jvm.version": 11,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "dependencies": [
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.2.0"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "java-processor-util-1.0.0-java11.jar",
+          "url": "java-processor-util-1.0.0-java11.jar",
+          "size": 6721,
+          "sha512": "a1c6804eab28aa107d26c5dfc7e13c781227a3c902bf3d980d38faa49adb3dd1fdaab8ec1e41b6097f04507c4b7842ac49c67e6a62d3c95748904b48e8760f14",
+          "sha256": "0be7ef805114265c16ca48449fed6122dbd8114b138f0c6364ccf09790ecfcb0",
+          "sha1": "0f6acea75416318c3e162559e12125c8bb1a0b24",
+          "md5": "e7b5261c9b19fbfaa5ef9bd8dfadc287"
+        },
+        {
+          "name": "java-processor-util-1.0.0.jar",
+          "url": "java-processor-util-1.0.0.jar",
+          "size": 14355,
+          "sha512": "8947f805c7986804f2b6e10633108b04fab0fb9ed758955e5fbbbd79cb05349ac84138068c6783b9f3948079ed97a037df589e3c7906d57a3179b6ac05e555bb",
+          "sha256": "7cc036314de5d4c4760fc8050d5a0bcc60099eb96fae6fdad571cb21167d952e",
+          "sha1": "82eac434104fdfdd1f5b3ab37baf6e84f5cd60c4",
+          "md5": "484839d96b149b3c685bd4e8eba0f66b"
+        }
+      ],
+      "capabilities": [
+        {
+          "group": "net.msrandom",
+          "name": "java-processor-util",
+          "version": "1.0.0"
+        }
+      ]
+    },
+    {
+      "name": "java11RuntimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.environment": "standard-jvm",
+        "org.gradle.jvm.version": 11,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "dependencies": [
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.2.0"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "java-processor-util-1.0.0-java11.jar",
+          "url": "java-processor-util-1.0.0-java11.jar",
+          "size": 6721,
+          "sha512": "a1c6804eab28aa107d26c5dfc7e13c781227a3c902bf3d980d38faa49adb3dd1fdaab8ec1e41b6097f04507c4b7842ac49c67e6a62d3c95748904b48e8760f14",
+          "sha256": "0be7ef805114265c16ca48449fed6122dbd8114b138f0c6364ccf09790ecfcb0",
+          "sha1": "0f6acea75416318c3e162559e12125c8bb1a0b24",
+          "md5": "e7b5261c9b19fbfaa5ef9bd8dfadc287"
+        },
+        {
+          "name": "java-processor-util-1.0.0.jar",
+          "url": "java-processor-util-1.0.0.jar",
+          "size": 14355,
+          "sha512": "8947f805c7986804f2b6e10633108b04fab0fb9ed758955e5fbbbd79cb05349ac84138068c6783b9f3948079ed97a037df589e3c7906d57a3179b6ac05e555bb",
+          "sha256": "7cc036314de5d4c4760fc8050d5a0bcc60099eb96fae6fdad571cb21167d952e",
+          "sha1": "82eac434104fdfdd1f5b3ab37baf6e84f5cd60c4",
+          "md5": "484839d96b149b3c685bd4e8eba0f66b"
+        }
+      ],
+      "capabilities": [
+        {
+          "group": "net.msrandom",
+          "name": "java-processor-util",
+          "version": "1.0.0"
+        }
+      ]
+    }
+  ]
+}

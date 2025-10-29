@@ -1,0 +1,116 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "net.msrandom",
+    "module": "java-expect-actual-processor",
+    "version": "1.0.9",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "9.1.0"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.environment": "standard-jvm",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "dependencies": [
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.2.0"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "java-expect-actual-processor-1.0.9.jar",
+          "url": "java-expect-actual-processor-1.0.9.jar",
+          "size": 16219,
+          "sha512": "740c6dd2559ca77af14b92d17cbc071fc47b9eee4b384126fde46b01cba105ea417b570921a3135ba564bdb2fc1a5c90f43628868bebc273fe03a552208bd684",
+          "sha256": "ba2b0461257b50d5fd065f47a1bd8b20cfb910f5601fe3c2e05fa2c723663f58",
+          "sha1": "1ae0219a4ee2241895b937f0c2a9a96de08b86a6",
+          "md5": "fc1f7bf43f447c8fe2450008f4232a0f"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.environment": "standard-jvm",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "dependencies": [
+        {
+          "group": "net.msrandom",
+          "module": "java-expect-actual-annotations",
+          "version": {
+            "requires": "1.0.0"
+          }
+        },
+        {
+          "group": "net.msrandom",
+          "module": "java-processor-util",
+          "version": {
+            "requires": "1.0.0"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.2.0"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "java-expect-actual-processor-1.0.9.jar",
+          "url": "java-expect-actual-processor-1.0.9.jar",
+          "size": 16219,
+          "sha512": "740c6dd2559ca77af14b92d17cbc071fc47b9eee4b384126fde46b01cba105ea417b570921a3135ba564bdb2fc1a5c90f43628868bebc273fe03a552208bd684",
+          "sha256": "ba2b0461257b50d5fd065f47a1bd8b20cfb910f5601fe3c2e05fa2c723663f58",
+          "sha1": "1ae0219a4ee2241895b937f0c2a9a96de08b86a6",
+          "md5": "fc1f7bf43f447c8fe2450008f4232a0f"
+        }
+      ]
+    },
+    {
+      "name": "sourcesElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "java-expect-actual-processor-1.0.9-sources.jar",
+          "url": "java-expect-actual-processor-1.0.9-sources.jar",
+          "size": 4186,
+          "sha512": "88a5291f29869b6fcce9c5fd6f20258a694d6a163194167195d418e13043ad3786b7b66021a7b37a7f297b0cd13ccb36414e45cc8018d863b98b80f000daa016",
+          "sha256": "659cca06c67f992ca70db58521c97588287599da4975bfccf0b22aa562733ac7",
+          "sha1": "d6e1a660c6b0945762ecd1f830671e6ed9e29e09",
+          "md5": "5ff352e2a9a3b5a157e77ee722683ced"
+        }
+      ]
+    }
+  ]
+}
