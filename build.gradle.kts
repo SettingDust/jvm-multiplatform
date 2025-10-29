@@ -37,6 +37,10 @@ subprojects {
                     password = mavenPassword
                 }
             }
+
+            maven("file://${rootProject.projectDir}/publish") {
+                name = "project"
+            }
         }
     }
 }

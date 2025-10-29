@@ -13,7 +13,7 @@ dependencies {
     ksp(group = "dev.zacsweers.autoservice", name = "auto-service-ksp", version = "1.2.0")
     compileOnly(group = "com.google.auto.service", name = "auto-service-annotations", version = "1.1.1")
 
-    implementation(kotlin("compiler-embeddable"))
+    implementation(group = "org.jetbrains.kotlin", name = "kotlin-compiler-embeddable", version = "2.1.0")
 
     implementation(projects.classExtensionAnnotations)
 
