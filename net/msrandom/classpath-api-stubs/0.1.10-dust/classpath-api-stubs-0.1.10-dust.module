@@ -29,11 +29,11 @@
         {
           "name": "classpath-api-stubs-0.1.10-dust.jar",
           "url": "classpath-api-stubs-0.1.10-dust.jar",
-          "size": 74902,
-          "sha512": "803a6ae5a6edb17de337f69c22c8100a2033ecaa35a8f369129f9b4dfa4cc974b6590a3b83da41f117a9403ffde3df11745ca360688ed0b3eb6376e9a91360fb",
-          "sha256": "76e42682b6f7dd3154871249a49aca14ff95c0086390eb503030d2bd97eb12dd",
-          "sha1": "82bfe7763e34fd6d90ab39f545f865d448da2f87",
-          "md5": "16b1fbe9dbfc924399561378afbdf832"
+          "size": 74942,
+          "sha512": "02f82b0a76a7c7e240004bdeaf458624abec69b9e1a5e6c277750a77cf62f35a99ea98972201501859d330d1ddf0d4f825971d488ed4179943250f85a0aae2a4",
+          "sha256": "7b48a3c8c4f040478c930ba10fed837c015cba5b7387d18b5216f91a25d3511f",
+          "sha1": "95f71a2a87b2313e8c86044ff209d8a6b8f10b85",
+          "md5": "d26457f475c56618cf2f83fe1145187d"
         }
       ]
     },
@@ -61,11 +61,11 @@
         {
           "name": "classpath-api-stubs-0.1.10-dust.jar",
           "url": "classpath-api-stubs-0.1.10-dust.jar",
-          "size": 74902,
-          "sha512": "803a6ae5a6edb17de337f69c22c8100a2033ecaa35a8f369129f9b4dfa4cc974b6590a3b83da41f117a9403ffde3df11745ca360688ed0b3eb6376e9a91360fb",
-          "sha256": "76e42682b6f7dd3154871249a49aca14ff95c0086390eb503030d2bd97eb12dd",
-          "sha1": "82bfe7763e34fd6d90ab39f545f865d448da2f87",
-          "md5": "16b1fbe9dbfc924399561378afbdf832"
+          "size": 74942,
+          "sha512": "02f82b0a76a7c7e240004bdeaf458624abec69b9e1a5e6c277750a77cf62f35a99ea98972201501859d330d1ddf0d4f825971d488ed4179943250f85a0aae2a4",
+          "sha256": "7b48a3c8c4f040478c930ba10fed837c015cba5b7387d18b5216f91a25d3511f",
+          "sha1": "95f71a2a87b2313e8c86044ff209d8a6b8f10b85",
+          "md5": "d26457f475c56618cf2f83fe1145187d"
         }
       ]
     },
@@ -81,11 +81,11 @@
         {
           "name": "classpath-api-stubs-0.1.10-dust-sources.jar",
           "url": "classpath-api-stubs-0.1.10-dust-sources.jar",
-          "size": 12303,
-          "sha512": "7a93071d97b4a37892a53e0ace0e093ceff22b5dadeb429ac9554e38b07eac85dd1d6fd13d566198c6d4d9dcf607341cf624d552bfbc0a16e2a5e28d702b7b29",
-          "sha256": "ffb76feb0248dff91376e77a025e6b5341f678c4cdb33075907535f9600734e1",
-          "sha1": "ccc4dacf2f528bad1a898786379a431caca968a2",
-          "md5": "c505ba6dcc04bff5db0336b3dee7fbfd"
+          "size": 12317,
+          "sha512": "1c617bf5b7761f6043f65ac7c24aa3dc5ca14e46882924493a207f374078fe19e85c7d22b17a76e6986764957cd0247873d246b0f7c6499a4ddf38f4893d23a5",
+          "sha256": "0c42e6671453e4b50a98014c65bc83f144d073b9d8c7931990a8d67e1cc3eeb1",
+          "sha1": "8132aca75c47ca4e1f76d4e87c0ff9e331c74936",
+          "md5": "feabf07e0e25e9780478390184ab3b1e"
         }
       ]
     }
