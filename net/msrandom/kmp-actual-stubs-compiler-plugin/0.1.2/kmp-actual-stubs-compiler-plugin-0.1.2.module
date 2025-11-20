@@ -1,0 +1,95 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "net.msrandom",
+    "module": "kmp-actual-stubs-compiler-plugin",
+    "version": "0.1.2",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "9.1.0"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.environment": "standard-jvm",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "dependencies": [
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.2.0"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "kmp-actual-stubs-compiler-plugin-0.1.2.jar",
+          "url": "kmp-actual-stubs-compiler-plugin-0.1.2.jar",
+          "size": 26649,
+          "sha512": "3fae3a25886456ce244ae65a498005346d2c1f6c0fbb19dfb409d34ccde190974eecd9baa8bebcec1e470aff25e57910c0be3ee9812c0d977b02c5cd301a306b",
+          "sha256": "8ddf1667240abfa6342c1f3474d7339923a8875fdb6028e4029c6aadc52bf6f9",
+          "sha1": "ea2e8051cf1ef9595c99812384b41bdfad0edadd",
+          "md5": "f0dea2db9a520be8ccf1247c1609c0bb"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.environment": "standard-jvm",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "dependencies": [
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-compiler-embeddable"
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.2.0"
+          }
+        }
+      ],
+      "dependencyConstraints": [
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-compiler-embeddable",
+          "version": {
+            "requires": "2.2.0"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "kmp-actual-stubs-compiler-plugin-0.1.2.jar",
+          "url": "kmp-actual-stubs-compiler-plugin-0.1.2.jar",
+          "size": 26649,
+          "sha512": "3fae3a25886456ce244ae65a498005346d2c1f6c0fbb19dfb409d34ccde190974eecd9baa8bebcec1e470aff25e57910c0be3ee9812c0d977b02c5cd301a306b",
+          "sha256": "8ddf1667240abfa6342c1f3474d7339923a8875fdb6028e4029c6aadc52bf6f9",
+          "sha1": "ea2e8051cf1ef9595c99812384b41bdfad0edadd",
+          "md5": "f0dea2db9a520be8ccf1247c1609c0bb"
+        }
+      ]
+    }
+  ]
+}
