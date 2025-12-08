@@ -3,12 +3,13 @@
   <groupId>net.msrandom.classpath-api-stubs</groupId>
   <artifactId>net.msrandom.classpath-api-stubs.gradle.plugin</artifactId>
   <versioning>
-    <latest>0.1.10-dust</latest>
-    <release>0.1.10-dust</release>
+    <latest>0.1.11-dust</latest>
+    <release>0.1.11-dust</release>
     <versions>
       <version>0.1.10</version>
       <version>0.1.10-dust</version>
+      <version>0.1.11-dust</version>
     </versions>
-    <lastUpdated>20251120081751</lastUpdated>
+    <lastUpdated>20251208074457</lastUpdated>
   </versioning>
 </metadata>
