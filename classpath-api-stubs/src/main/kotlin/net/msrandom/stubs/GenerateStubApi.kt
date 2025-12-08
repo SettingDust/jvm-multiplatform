@@ -93,6 +93,7 @@ abstract class GenerateStubApi : DefaultTask() {
 
         fun setComponent(component: ComponentIdentifier) {
             componentId.set(component.toString())
+
             when (component) {
                 is ModuleComponentIdentifier -> {
                     type.set(Type.Module)
@@ -106,7 +107,8 @@ abstract class GenerateStubApi : DefaultTask() {
         }
 
         enum class Type {
-            Module, Project
+            Module,
+            Project,
         }
     }
 }

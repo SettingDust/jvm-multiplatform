@@ -90,8 +90,6 @@ object StubGenerator {
         val classpaths = classpaths.map { artifacts ->
             val (excluded, included) = artifacts.partition {
                 val type = it.type.orNull
-                assert(type !== GenerateStubApi.ResolvedArtifact.Type.Project)
-
                 val id = it.componentId.orNull ?: return@partition false
 
                 type === GenerateStubApi.ResolvedArtifact.Type.Module && exclude.any(id::startsWith)
