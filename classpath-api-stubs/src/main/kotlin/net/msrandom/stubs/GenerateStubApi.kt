@@ -67,6 +67,7 @@ abstract class GenerateStubApi : DefaultTask() {
 
     interface ResolvedArtifact {
         val componentId: Property<String>
+            @Optional
             @Input
             get
 
