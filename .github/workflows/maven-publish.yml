@@ -69,14 +69,64 @@ jobs:
 
       - name: Execute Gradle build
         if: steps.detect_changes.outputs.modules != 'none'
-        uses: burrunan/gradle-cache-action@v3
-        with:
-          arguments: |
-            ${{ steps.detect_changes.outputs.modules == 'all' && 'publishToMavenLocal' || 
-                format('{0}', join(fromJSON(format('[{0}]', 
-                  replace(replace(steps.detect_changes.outputs.modules, ' ', ':publishToMavenLocal :'), 
-                  steps.detect_changes.outputs.modules, 
-                  format('{0}:publishToMavenLocal', steps.detect_changes.outputs.modules))))) }}
+        run: |
+          CHANGED_MODULES="${{ steps.detect_changes.outputs.modules }}"
+          
+          if [ "$CHANGED_MODULES" = "all" ]; then
+            echo "Publishing all modules"
+            ./gradlew publishToMavenLocal
+          else
+            # Map directory paths to Gradle project names
+            TASKS=""
+            for dir_path in $CHANGED_MODULES; do
+              case "$dir_path" in
+                "class-extensions/annotations")
+                  TASKS="$TASKS :class-extension-annotations:publishToMavenLocal"
+                  ;;
+                "class-extensions/gradle-plugin")
+                  TASKS="$TASKS :class-extensions-gradle-plugin:publishToMavenLocal"
+                  ;;
+                "class-extensions/java-processor")
+                  TASKS="$TASKS :java-class-extensions-processor:publishToMavenLocal"
+                  ;;
+                "class-extensions/kotlin-plugin")
+                  TASKS="$TASKS :kotlin-class-extensions-plugin:publishToMavenLocal"
+                  ;;
+                "java-expect-actual/annotations")
+                  TASKS="$TASKS :java-expect-actual-annotations:publishToMavenLocal"
+                  ;;
+                "java-expect-actual/processor")
+                  TASKS="$TASKS :java-expect-actual-processor:publishToMavenLocal"
+                  ;;
+                "java-expect-actual/idea-plugin")
+                  TASKS="$TASKS :java-expect-actual-idea:publishToMavenLocal"
+                  ;;
+                "virtual-source-sets/gradle-plugin")
+                  TASKS="$TASKS :jvm-virtual-source-sets:publishToMavenLocal"
+                  ;;
+                "virtual-source-sets/idea-plugin")
+                  TASKS="$TASKS :jvm-virtual-source-sets-idea:publishToMavenLocal"
+                  ;;
+                "kmp-actual-stubs/annotations")
+                  TASKS="$TASKS :kmp-actual-stub-annotations:publishToMavenLocal"
+                  ;;
+                "kmp-actual-stubs/compiler-plugin")
+                  TASKS="$TASKS :kmp-actual-stubs-compiler-plugin:publishToMavenLocal"
+                  ;;
+                "java-processor-util")
+                  TASKS="$TASKS :java-processor-util:publishToMavenLocal"
+                  ;;
+                "classpath-api-stubs")
+                  TASKS="$TASKS :classpath-api-stubs:publishToMavenLocal"
+                  ;;
+                *)
+                  echo "Warning: Unknown module path $dir_path"
+                  ;;
+              esac
+            done
+            echo "Publishing: $TASKS"
+            ./gradlew $TASKS
+          fi
 
       - name: Checkout Maven Repo
         if: steps.detect_changes.outputs.modules != 'none'
