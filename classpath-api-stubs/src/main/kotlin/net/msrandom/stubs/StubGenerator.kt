@@ -1,9 +1,9 @@
 package net.msrandom.stubs
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import net.msrandom.stubs.ClassNodeIntersector.intersectClassNodes
-import org.gradle.internal.impldep.kotlinx.coroutines.Dispatchers
-import org.gradle.internal.impldep.kotlinx.coroutines.launch
-import org.gradle.internal.impldep.kotlinx.coroutines.runBlocking
 import org.objectweb.asm.ClassReader
 import org.objectweb.asm.ClassWriter
 import org.objectweb.asm.tree.ClassNode

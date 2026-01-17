@@ -1,0 +1,187 @@
+name: Publish to Maven Repository
+
+on:
+  push:
+    paths:
+      - '**/gradle.properties'
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      GROUP_PATH: "net/msrandom"
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: 'gradle'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v5
+        with:
+          cache-read-only: false
+
+      - name: Detect changed modules
+        id: detect_changes
+        run: |
+          # Get changed gradle.properties files
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            # For manual triggers, publish all modules
+            echo "modules=all" >> $GITHUB_OUTPUT
+          else
+            # Get the list of changed gradle.properties files
+            changed_files=$(git diff --name-only HEAD^ HEAD | grep 'gradle.properties$' || true)
+            
+            if [ -z "$changed_files" ]; then
+              echo "No gradle.properties files changed"
+              echo "modules=none" >> $GITHUB_OUTPUT
+            else
+              echo "Changed gradle.properties files:"
+              echo "$changed_files"
+              
+              # Extract module names from paths
+              modules=""
+              for file in $changed_files; do
+                if [[ $file == "gradle.properties" ]]; then
+                  # Root gradle.properties changed, publish all modules
+                  echo "modules=all" >> $GITHUB_OUTPUT
+                  exit 0
+                else
+                  # Extract directory path like "class-extensions/annotations"
+                  module=$(echo $file | sed 's|/gradle.properties||')
+                  modules="$modules $module"
+                fi
+              done
+              
+              # Remove leading/trailing spaces and save
+              modules=$(echo $modules | xargs)
+              echo "modules=$modules" >> $GITHUB_OUTPUT
+              echo "Modules to publish: $modules"
+            fi
+          fi
+
+      - name: Execute Gradle build
+        if: steps.detect_changes.outputs.modules != 'none'
+        uses: burrunan/gradle-cache-action@v3
+        with:
+          arguments: |
+            ${{ steps.detect_changes.outputs.modules == 'all' && 'publishToMavenLocal' || 
+                format('{0}', join(fromJSON(format('[{0}]', 
+                  replace(replace(steps.detect_changes.outputs.modules, ' ', ':publishToMavenLocal :'), 
+                  steps.detect_changes.outputs.modules, 
+                  format('{0}:publishToMavenLocal', steps.detect_changes.outputs.modules))))) }}
+
+      - name: Checkout Maven Repo
+        if: steps.detect_changes.outputs.modules != 'none'
+        uses: actions/checkout@v6
+        with:
+          repository: SettingDust/maven
+          token: ${{ secrets.MAVEN_REPO_TOKEN }}
+          path: maven-repo
+
+      - name: Copy artifacts
+        if: steps.detect_changes.outputs.modules != 'none'
+        run: |
+          SOURCE="$HOME/.m2/repository/$GROUP_PATH"
+          TARGET="maven-repo/repository/$GROUP_PATH"
+          
+          mkdir -p "$TARGET"
+          
+          CHANGED_MODULES="${{ steps.detect_changes.outputs.modules }}"
+          
+          # Define all publishable modules
+          ALL_MODULES="jvm-virtual-source-sets jvm-virtual-source-sets-idea java-expect-actual-annotations java-expect-actual-processor java-expect-actual-idea kmp-actual-stub-annotations kmp-actual-stubs-compiler-plugin class-extensions-gradle-plugin class-extension-annotations java-class-extensions-processor kotlin-class-extensions-plugin java-processor-util classpath-api-stubs"
+          
+          if [ "$CHANGED_MODULES" = "all" ]; then
+            # Copy all published modules
+            for module in $ALL_MODULES; do
+              if [ -d "$SOURCE/$module" ]; then
+                echo "Copying $module"
+                mkdir -p "$TARGET/$module"
+                cp -r "$SOURCE/$module/"* "$TARGET/$module/" 2>/dev/null || true
+              fi
+            done
+          else
+            # Copy only changed modules - need to map directory paths to artifact names
+            for dir_path in $CHANGED_MODULES; do
+              # Map directory paths to artifact names
+              case "$dir_path" in
+                "class-extensions/annotations")
+                  module="class-extension-annotations"
+                  ;;
+                "class-extensions/gradle-plugin")
+                  module="class-extensions-gradle-plugin"
+                  ;;
+                "class-extensions/java-processor")
+                  module="java-class-extensions-processor"
+                  ;;
+                "class-extensions/kotlin-plugin")
+                  module="kotlin-class-extensions-plugin"
+                  ;;
+                "java-expect-actual/annotations")
+                  module="java-expect-actual-annotations"
+                  ;;
+                "java-expect-actual/processor")
+                  module="java-expect-actual-processor"
+                  ;;
+                "java-expect-actual/idea-plugin")
+                  module="java-expect-actual-idea"
+                  ;;
+                "virtual-source-sets/gradle-plugin")
+                  module="jvm-virtual-source-sets"
+                  ;;
+                "virtual-source-sets/idea-plugin")
+                  module="jvm-virtual-source-sets-idea"
+                  ;;
+                "kmp-actual-stubs/annotations")
+                  module="kmp-actual-stub-annotations"
+                  ;;
+                "kmp-actual-stubs/compiler-plugin")
+                  module="kmp-actual-stubs-compiler-plugin"
+                  ;;
+                "java-processor-util")
+                  module="java-processor-util"
+                  ;;
+                "classpath-api-stubs")
+                  module="classpath-api-stubs"
+                  ;;
+                *)
+                  echo "Warning: Unknown module path $dir_path"
+                  continue
+                  ;;
+              esac
+              
+              if [ -d "$SOURCE/$module" ]; then
+                echo "Copying $module"
+                mkdir -p "$TARGET/$module"
+                cp -r "$SOURCE/$module/"* "$TARGET/$module/" 2>/dev/null || true
+              else
+                echo "Warning: $module not found in $SOURCE"
+              fi
+            done
+          fi
+
+      - name: Commit and push
+        if: steps.detect_changes.outputs.modules != 'none'
+        working-directory: maven-repo
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add repository/
+          
+          CHANGED_MODULES="${{ steps.detect_changes.outputs.modules }}"
+          if [ "$CHANGED_MODULES" = "all" ]; then
+            COMMIT_MSG="chore(release): publish all modules"
+          else
+            COMMIT_MSG="chore(release): publish $CHANGED_MODULES"
+          fi
+          
+          git commit -m "$COMMIT_MSG" || echo "No changes to commit"
+          git push
