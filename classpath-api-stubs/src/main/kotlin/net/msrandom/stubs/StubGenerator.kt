@@ -22,11 +22,12 @@ object StubGenerator {
     private fun createFileIntersection(
         streams: List<Pair<ClasspathLoader, ClassNode>>,
         output: Path,
+        preserveMethodBodies: Boolean,
     ) {
         output.parent?.createDirectories()
 
         val (_, node) = streams.reduce { (classpathA, nodeA), (classpathB, nodeB) ->
-            classpathB to intersectClassNodes(nodeA, nodeB, classpathA, classpathB)
+            classpathB to intersectClassNodes(nodeA, nodeB, classpathA, classpathB, preserveMethodBodies)
         }
 
         val writer = ClassWriter(0)
@@ -53,7 +54,8 @@ object StubGenerator {
     fun generateStub(
         classpaths: Iterable<List<GenerateStubApi.ResolvedArtifact>>,
         extraExcludes: List<String>,
-        output: Path
+        output: Path,
+        preserveMethodBodies: Boolean,
     ): List<GenerateStubApi.ResolvedArtifact> {
         val exclude = listOf(
             "org.jetbrains",
@@ -134,7 +136,7 @@ object StubGenerator {
                                 path.parent?.createDirectories()
                             }
 
-                            createFileIntersection(streams, path)
+                            createFileIntersection(streams, path, preserveMethodBodies)
                         }
                     }.forEach { it.join() }
                 }

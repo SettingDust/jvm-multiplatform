@@ -33,11 +33,15 @@ abstract class GenerateStubApi @Inject constructor(
     abstract val apiFileName: Property<String>
         @Input get
 
+    abstract val preserveMethodBodies: Property<Boolean>
+        @Input get
+
     abstract val outputDirectory: DirectoryProperty
         @OutputDirectory get
 
     init {
         apiFileName.convention("api-stub.jar")
+        preserveMethodBodies.convention(false)
         outputDirectory.convention(project.layout.dir(project.provider { temporaryDir }))
     }
 
@@ -58,6 +62,7 @@ abstract class GenerateStubApi @Inject constructor(
             excludes.set(this@GenerateStubApi.excludes)
             this.apiFile.value(apiFile)
             this.outputDirectory.value(this@GenerateStubApi.outputDirectory)
+            this.preserveMethodBodies.set(this@GenerateStubApi.preserveMethodBodies)
         }
     }
 
@@ -66,6 +71,7 @@ abstract class GenerateStubApi @Inject constructor(
         val excludes: ListProperty<String>
         val apiFile: RegularFileProperty
         val outputDirectory: DirectoryProperty
+        val preserveMethodBodies: Property<Boolean>
     }
 
     abstract class StubGenerationWork : WorkAction<StubGenerationParameters> {
@@ -77,7 +83,8 @@ abstract class GenerateStubApi @Inject constructor(
             val extras = StubGenerator.generateStub(
                 params.classpaths.get(),
                 params.excludes.get(),
-                apiFile
+                apiFile,
+                params.preserveMethodBodies.getOrElse(false)
             )
 
             extras.parallelStream().forEach { artifact ->
