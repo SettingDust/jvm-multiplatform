@@ -17,6 +17,8 @@ class StubCompilerPlugin : CompilerPluginRegistrar() {
 
     override val supportsK2: Boolean = true
 
+    override val pluginId: String = "net.msrandom.stub"
+
     override fun ExtensionStorage.registerExtensions(
         configuration: CompilerConfiguration
     ) {

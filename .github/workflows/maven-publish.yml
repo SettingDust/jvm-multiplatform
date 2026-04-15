@@ -2,6 +2,7 @@ name: Publish to Maven Repository
 
 on:
   push:
+    branches: ['main']
     paths:
       - '**/gradle.properties'
   workflow_dispatch:
@@ -20,7 +21,7 @@ jobs:
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: 17
+          java-version: 21
           cache: 'gradle'
 
       - name: Setup Gradle
@@ -28,210 +29,59 @@ jobs:
         with:
           cache-read-only: false
 
-      - name: Detect changed modules
-        id: detect_changes
-        run: |
-          # Get changed gradle.properties files
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            # For manual triggers, publish all modules
-            echo "modules=all" >> $GITHUB_OUTPUT
-          else
-            # Get the list of changed gradle.properties files
-            changed_files=$(git diff --name-only HEAD^ HEAD | grep 'gradle.properties$' || true)
-            
-            if [ -z "$changed_files" ]; then
-              echo "No gradle.properties files changed"
-              echo "modules=none" >> $GITHUB_OUTPUT
-            else
-              echo "Changed gradle.properties files:"
-              echo "$changed_files"
-              
-              # Extract module names from paths
-              modules=""
-              for file in $changed_files; do
-                if [[ $file == "gradle.properties" ]]; then
-                  # Root gradle.properties changed, publish all modules
-                  echo "modules=all" >> $GITHUB_OUTPUT
-                  exit 0
-                else
-                  # Extract directory path like "class-extensions/annotations"
-                  module=$(echo $file | sed 's|/gradle.properties||')
-                  modules="$modules $module"
-                fi
-              done
-              
-              # Remove leading/trailing spaces and save
-              modules=$(echo $modules | xargs)
-              echo "modules=$modules" >> $GITHUB_OUTPUT
-              echo "Modules to publish: $modules"
-            fi
-          fi
-
-      - name: Execute Gradle build
-        if: steps.detect_changes.outputs.modules != 'none'
-        run: |
-          CHANGED_MODULES="${{ steps.detect_changes.outputs.modules }}"
-          
-          if [ "$CHANGED_MODULES" = "all" ]; then
-            echo "Publishing all modules"
-            ./gradlew publishToMavenLocal
-          else
-            # Map directory paths to Gradle project names
-            TASKS=""
-            for dir_path in $CHANGED_MODULES; do
-              case "$dir_path" in
-                "class-extensions/annotations")
-                  TASKS="$TASKS :class-extension-annotations:publishToMavenLocal"
-                  ;;
-                "class-extensions/gradle-plugin")
-                  TASKS="$TASKS :class-extensions-gradle-plugin:publishToMavenLocal"
-                  ;;
-                "class-extensions/java-processor")
-                  TASKS="$TASKS :java-class-extensions-processor:publishToMavenLocal"
-                  ;;
-                "class-extensions/kotlin-plugin")
-                  TASKS="$TASKS :kotlin-class-extensions-plugin:publishToMavenLocal"
-                  ;;
-                "java-expect-actual/annotations")
-                  TASKS="$TASKS :java-expect-actual-annotations:publishToMavenLocal"
-                  ;;
-                "java-expect-actual/processor")
-                  TASKS="$TASKS :java-expect-actual-processor:publishToMavenLocal"
-                  ;;
-                "java-expect-actual/idea-plugin")
-                  TASKS="$TASKS :java-expect-actual-idea:publishToMavenLocal"
-                  ;;
-                "virtual-source-sets/gradle-plugin")
-                  TASKS="$TASKS :jvm-virtual-source-sets:publishToMavenLocal"
-                  ;;
-                "virtual-source-sets/idea-plugin")
-                  TASKS="$TASKS :jvm-virtual-source-sets-idea:publishToMavenLocal"
-                  ;;
-                "kmp-actual-stubs/annotations")
-                  TASKS="$TASKS :kmp-actual-stub-annotations:publishToMavenLocal"
-                  ;;
-                "kmp-actual-stubs/compiler-plugin")
-                  TASKS="$TASKS :kmp-actual-stubs-compiler-plugin:publishToMavenLocal"
-                  ;;
-                "java-processor-util")
-                  TASKS="$TASKS :java-processor-util:publishToMavenLocal"
-                  ;;
-                "classpath-api-stubs")
-                  TASKS="$TASKS :classpath-api-stubs:publishToMavenLocal"
-                  ;;
-                *)
-                  echo "Warning: Unknown module path $dir_path"
-                  ;;
-              esac
-            done
-            echo "Publishing: $TASKS"
-            ./gradlew $TASKS
-          fi
-
       - name: Checkout Maven Repo
-        if: steps.detect_changes.outputs.modules != 'none'
         uses: actions/checkout@v6
         with:
           repository: SettingDust/maven
           token: ${{ secrets.MAVEN_REPO_TOKEN }}
           path: maven-repo
 
-      - name: Copy artifacts
-        if: steps.detect_changes.outputs.modules != 'none'
+      - name: Build all modules
+        uses: burrunan/gradle-cache-action@v3
+        with:
+          arguments: publishToMavenLocal
+
+      - name: Copy artifacts to Maven repo
         run: |
           SOURCE="$HOME/.m2/repository/$GROUP_PATH"
           TARGET="maven-repo/repository/$GROUP_PATH"
-          
+
           mkdir -p "$TARGET"
-          
-          CHANGED_MODULES="${{ steps.detect_changes.outputs.modules }}"
-          
-          # Define all publishable modules
-          ALL_MODULES="jvm-virtual-source-sets jvm-virtual-source-sets-idea java-expect-actual-annotations java-expect-actual-processor java-expect-actual-idea kmp-actual-stub-annotations kmp-actual-stubs-compiler-plugin class-extensions-gradle-plugin class-extension-annotations java-class-extensions-processor kotlin-class-extensions-plugin java-processor-util classpath-api-stubs"
-          
-          if [ "$CHANGED_MODULES" = "all" ]; then
-            # Copy all published modules
-            for module in $ALL_MODULES; do
-              if [ -d "$SOURCE/$module" ]; then
-                echo "Copying $module"
-                mkdir -p "$TARGET/$module"
-                cp -r "$SOURCE/$module/"* "$TARGET/$module/" 2>/dev/null || true
-              fi
-            done
+
+          if [ -d "$SOURCE" ]; then
+            echo "Copying all published artifacts to maven repo..."
+            cp -r "$SOURCE/"* "$TARGET/"
+
+            # Remove local-only metadata files
+            find "$TARGET" -name "maven-metadata-local.xml" -delete
+            echo "Done."
           else
-            # Copy only changed modules - need to map directory paths to artifact names
-            for dir_path in $CHANGED_MODULES; do
-              # Map directory paths to artifact names
-              case "$dir_path" in
-                "class-extensions/annotations")
-                  module="class-extension-annotations"
-                  ;;
-                "class-extensions/gradle-plugin")
-                  module="class-extensions-gradle-plugin"
-                  ;;
-                "class-extensions/java-processor")
-                  module="java-class-extensions-processor"
-                  ;;
-                "class-extensions/kotlin-plugin")
-                  module="kotlin-class-extensions-plugin"
-                  ;;
-                "java-expect-actual/annotations")
-                  module="java-expect-actual-annotations"
-                  ;;
-                "java-expect-actual/processor")
-                  module="java-expect-actual-processor"
-                  ;;
-                "java-expect-actual/idea-plugin")
-                  module="java-expect-actual-idea"
-                  ;;
-                "virtual-source-sets/gradle-plugin")
-                  module="jvm-virtual-source-sets"
-                  ;;
-                "virtual-source-sets/idea-plugin")
-                  module="jvm-virtual-source-sets-idea"
-                  ;;
-                "kmp-actual-stubs/annotations")
-                  module="kmp-actual-stub-annotations"
-                  ;;
-                "kmp-actual-stubs/compiler-plugin")
-                  module="kmp-actual-stubs-compiler-plugin"
-                  ;;
-                "java-processor-util")
-                  module="java-processor-util"
-                  ;;
-                "classpath-api-stubs")
-                  module="classpath-api-stubs"
-                  ;;
-                *)
-                  echo "Warning: Unknown module path $dir_path"
-                  continue
-                  ;;
-              esac
-              
-              if [ -d "$SOURCE/$module" ]; then
-                echo "Copying $module"
-                mkdir -p "$TARGET/$module"
-                cp -r "$SOURCE/$module/"* "$TARGET/$module/" 2>/dev/null || true
-              else
-                echo "Warning: $module not found in $SOURCE"
-              fi
-            done
+            echo "ERROR: Local repository not found at $SOURCE"
+            exit 1
           fi
 
       - name: Commit and push
-        if: steps.detect_changes.outputs.modules != 'none'
         working-directory: maven-repo
         run: |
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
           git add repository/
           
-          CHANGED_MODULES="${{ steps.detect_changes.outputs.modules }}"
-          if [ "$CHANGED_MODULES" = "all" ]; then
-            COMMIT_MSG="chore(release): publish all modules"
+          if git diff --cached --quiet; then
+            echo "No changes to publish."
           else
-            COMMIT_MSG="chore(release): publish $CHANGED_MODULES"
+            # List changed modules from git diff
+            CHANGED=$(git diff --cached --name-only | grep "^repository/$GROUP_PATH/" | cut -d/ -f4 | sort -u | tr '\n' ' ' | xargs)
+            echo "Changed modules: $CHANGED"
+            
+            MODULE_COUNT=$(echo "$CHANGED" | wc -w)
+            if [ "$MODULE_COUNT" -eq 1 ]; then
+              COMMIT_MSG="chore(release): publish $CHANGED"
+            else
+              BODY=$(echo "$CHANGED" | tr ' ' '\n' | sed 's/^/- /')
+              COMMIT_MSG=$(printf "chore(release): publish %d modules\n\nChanged modules:\n%s" "$MODULE_COUNT" "$BODY")
+            fi
+            
+            git commit -m "$COMMIT_MSG"
+            git push
           fi
-          
-          git commit -m "$COMMIT_MSG" || echo "No changes to commit"
-          git push
