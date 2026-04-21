@@ -16,6 +16,11 @@ internal object CommonSuperClassFinder {
         val visitedSuperNamesA = mutableListOf<String?>(superNameA)
         val visitedSuperNamesB = hashSetOf<String?>(superNameB)
 
+        // A chain is exhausted when its superName is null (reached java/lang/Object)
+        // or when the classpath entry for the current superName cannot be resolved.
+        var chainAExhausted = superNameA == null
+        var chainBExhausted = superNameB == null
+
         while (true) {
             for (name in visitedSuperNamesA) {
                 if (name in visitedSuperNamesB) {
@@ -23,7 +28,14 @@ internal object CommonSuperClassFinder {
                 }
             }
 
-            if (superNameA != null) {
+            if (chainAExhausted && chainBExhausted) {
+                // Both chains fully explored without finding a common named ancestor.
+                // Return java/lang/Object as the universal safe fallback so the generated
+                // stub never references a superclass that only exists in one version's classpath.
+                return "java/lang/Object"
+            }
+
+            if (!chainAExhausted) {
                 val superA = classpathA.entry("$superNameA.class")
 
                 if (superA != null) {
@@ -31,17 +43,22 @@ internal object CommonSuperClassFinder {
 
                     if (superNameA in visitedSuperNamesB) {
                         return superNameA
-                        break
                     }
 
                     visitedSuperNamesA.add(superNameA)
+
+                    if (superNameA == null) {
+                        chainAExhausted = true
+                    }
                 } else {
-                    return superNameA
-                    break
+                    // Parent class not resolvable in this version's classpath.
+                    // Do NOT return superNameA here — it may not exist in the other version.
+                    // Mark the chain as exhausted and let the other side continue.
+                    chainAExhausted = true
                 }
             }
 
-            if (superNameB != null) {
+            if (!chainBExhausted) {
                 val superB = classpathB.entry("$superNameB.class")
 
                 if (superB != null) {
@@ -52,8 +69,12 @@ internal object CommonSuperClassFinder {
                     }
 
                     visitedSuperNamesB.add(superNameB)
+
+                    if (superNameB == null) {
+                        chainBExhausted = true
+                    }
                 } else {
-                    return superNameB
+                    chainBExhausted = true
                 }
             }
         }

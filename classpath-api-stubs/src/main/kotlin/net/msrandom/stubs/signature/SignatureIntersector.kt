@@ -155,7 +155,15 @@ internal object SignatureIntersector {
         val superClass = intersectClassTypeSignatures(a.superClass, b.superClass)
             ?: TypeSignature.Reference.Class(ClassNameSegment("java/lang/Object"))
 
-        val superInterfaces = a.superInterfaces.zip(b.superInterfaces, ::intersectClassTypeSignatures).filterNotNull()
+        // Match super interfaces by base class name rather than by position.
+        // Different MC versions may declare the same set of interfaces in different order
+        // (e.g., one version adds a new interface at position 0, shifting others).
+        // Positional zip would pair unrelated interfaces and discard all of them.
+        val bByName = b.superInterfaces.associateBy { it.base.name }
+        val superInterfaces = a.superInterfaces.mapNotNull { interfaceA ->
+            val interfaceB = bByName[interfaceA.base.name] ?: return@mapNotNull null
+            intersectClassTypeSignatures(interfaceA, interfaceB)
+        }
 
         return ClassSignature(typeParameters, superClass, superInterfaces)
     }
