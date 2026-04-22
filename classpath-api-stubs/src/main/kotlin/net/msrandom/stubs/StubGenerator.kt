@@ -14,7 +14,6 @@ import java.nio.file.Path
 import java.util.concurrent.ConcurrentHashMap
 import java.util.jar.JarFile
 import java.util.jar.Manifest
-import java.util.zip.ZipInputStream
 import kotlin.io.path.*
 
 object StubGenerator {
@@ -35,20 +34,6 @@ object StubGenerator {
         node.accept(writer)
 
         output.writeBytes(writer.toByteArray())
-    }
-
-    private fun getClassEntries(stream: ZipInputStream) = sequence {
-        while (true) {
-            val entry = stream.nextEntry
-
-            if (entry == null) {
-                break
-            }
-
-            if (entry.name.endsWith(".class")) {
-                yield(entry.name)
-            }
-        }
     }
 
     fun generateStub(
@@ -101,69 +86,67 @@ object StubGenerator {
             )
         }
 
-        val first = classpaths.first()
-        val rest = classpaths.subList(1, classpaths.size)
+        try {
+            val first = classpaths.first()
+            val rest = classpaths.subList(1, classpaths.size)
 
-        val entries = first.intersectionIncluded.asSequence().flatMap {
-            getClassEntries(ZipInputStream(it.inputStream()))
-        }
+            val entries = first.classEntries()
 
-        val filteredEntries = entries.filter { entry ->
-            rest.all {
-                it.hasEntry(entry)
-            }
-        }
-
-        output.deleteIfExists()
-        FileSystems.newFileSystem(URI.create("jar:${output.toUri()}"), mapOf("create" to true.toString()))
-            .use { fileSystem ->
-                val manifestPath = fileSystem.getPath(JarFile.MANIFEST_NAME)
-
-                manifestPath.parent.createDirectory()
-
-                manifestPath.outputStream().use(Manifest()::write)
-
-                runBlocking(Dispatchers.IO) {
-                    filteredEntries.map { entry ->
-                        launch {
-                            val streams = classpaths.map {
-                                it to it.entry(entry)!!
-                            }
-
-                            val path = fileSystem.getPath(entry)
-
-                            synchronized(fileSystem) {
-                                path.parent?.createDirectories()
-                            }
-
-                            createFileIntersection(streams, path, preserveMethodBodies)
-                        }
-                    }.forEach { it.join() }
+            val filteredEntries = entries.filter { entry ->
+                rest.all {
+                    it.hasEntry(entry)
                 }
             }
 
-        val intersectedExcludedArtifacts = classpaths.map { it.intersectionExcluded }.reduce { a, b ->
-            val artifactsA = a.groupBy { it.moduleId.get() }
+            output.deleteIfExists()
+            FileSystems.newFileSystem(URI.create("jar:${output.toUri()}"), mapOf("create" to true.toString()))
+                .use { fileSystem ->
+                    val manifestPath = fileSystem.getPath(JarFile.MANIFEST_NAME)
 
-            val artifactsB = b.groupBy { it.moduleId.get() }
+                    manifestPath.parent.createDirectory()
 
-            val intersections = artifactsA.keys.intersect(artifactsB.keys)
+                    manifestPath.outputStream().use(Manifest()::write)
 
-            intersections.flatMap { id ->
-                val relevantArtifactsA = artifactsA[id] ?: return@flatMap emptyList()
-                val relevantArtifactsB = artifactsB[id] ?: return@flatMap emptyList()
+                    runBlocking(Dispatchers.IO) {
+                        filteredEntries.map { entry ->
+                            launch {
+                                val streams = classpaths.map {
+                                    it to it.entry(entry)!!
+                                }
 
-                listOf(relevantArtifactsA, relevantArtifactsB).minBy {
-                    it[0].moduleVersion.get()
+                                val path = fileSystem.getPath(entry)
+
+                                synchronized(fileSystem) {
+                                    path.parent?.createDirectories()
+                                }
+
+                                createFileIntersection(streams, path, preserveMethodBodies)
+                            }
+                        }.forEach { it.join() }
+                    }
+                }
+
+            return classpaths.map { it.intersectionExcluded }.reduce { a, b ->
+                val artifactsA = a.groupBy { it.moduleId.get() }
+
+                val artifactsB = b.groupBy { it.moduleId.get() }
+
+                val intersections = artifactsA.keys.intersect(artifactsB.keys)
+
+                intersections.flatMap { id ->
+                    val relevantArtifactsA = artifactsA[id] ?: return@flatMap emptyList()
+                    val relevantArtifactsB = artifactsB[id] ?: return@flatMap emptyList()
+
+                    listOf(relevantArtifactsA, relevantArtifactsB).minBy {
+                        it[0].moduleVersion.get()
+                    }
                 }
             }
+        } finally {
+            for (classpath in classpaths) {
+                classpath.close()
+            }
         }
-
-        for (classpath in classpaths) {
-            classpath.close()
-        }
-
-        return intersectedExcludedArtifacts
     }
 
     internal class ClasspathLoader(
@@ -176,6 +159,18 @@ object StubGenerator {
 
         // Use JarFile for thread-safe access
         private val jarFiles = allFiles.map { JarFile(it) }
+
+        fun classEntries(): Sequence<String> = sequence {
+            for (jar in jarFiles) {
+                val entries = jar.entries()
+                while (entries.hasMoreElements()) {
+                    val entry = entries.nextElement()
+                    if (!entry.isDirectory && entry.name.endsWith(".class")) {
+                        yield(entry.name)
+                    }
+                }
+            }
+        }
 
         fun hasEntry(name: String): Boolean {
             return jarFiles.any { it.getEntry(name) != null }
