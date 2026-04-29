@@ -4,6 +4,7 @@ import net.msrandom.stubs.StubGenerator.ClasspathLoader
 import net.msrandom.stubs.signature.SignatureIntersector
 import org.objectweb.asm.Type
 import org.objectweb.asm.Opcodes
+import org.objectweb.asm.tree.AnnotationNode
 import org.objectweb.asm.tree.*
 import kotlin.math.min
 
@@ -93,6 +94,36 @@ object ClassNodeIntersector {
         return matchingAnnotations
     }
 
+    private fun intersectTypeAnnotations(
+        annotationsA: List<TypeAnnotationNode>?,
+        annotationsB: List<TypeAnnotationNode>?,
+    ): List<TypeAnnotationNode>? {
+        if (annotationsA == null || annotationsB == null) {
+            return null
+        }
+
+        return annotationsA.filter { annotation ->
+            annotationsB.any { it.desc == annotation.desc }
+        }
+    }
+
+    private fun intersectParameterAnnotations(
+        annotationsA: Array<MutableList<AnnotationNode>?>?,
+        annotationsB: Array<MutableList<AnnotationNode>?>?,
+    ): Array<MutableList<AnnotationNode>?>? {
+        if (annotationsA == null || annotationsB == null) {
+            return null
+        }
+
+        if (annotationsA.size != annotationsB.size) {
+            return null
+        }
+
+        return Array(annotationsA.size) { index ->
+            intersectAnnotations(annotationsA[index], annotationsB[index])?.toMutableList()
+        }
+    }
+
     internal fun intersectClassNodes(
         nodeA: ClassNode,
         nodeB: ClassNode,
@@ -163,6 +194,14 @@ object ClassNodeIntersector {
                         intersectAnnotations(methodA.visibleAnnotations, methodB.visibleAnnotations)
                     val invisibleAnnotations =
                         intersectAnnotations(methodA.invisibleAnnotations, methodB.invisibleAnnotations)
+                    val visibleTypeAnnotations =
+                        intersectTypeAnnotations(methodA.visibleTypeAnnotations, methodB.visibleTypeAnnotations)
+                    val invisibleTypeAnnotations =
+                        intersectTypeAnnotations(methodA.invisibleTypeAnnotations, methodB.invisibleTypeAnnotations)
+                    val visibleParameterAnnotations =
+                        intersectParameterAnnotations(methodA.visibleParameterAnnotations, methodB.visibleParameterAnnotations)
+                    val invisibleParameterAnnotations =
+                        intersectParameterAnnotations(methodA.invisibleParameterAnnotations, methodB.invisibleParameterAnnotations)
 
                     val method = MethodNode(
                         access,
@@ -174,6 +213,10 @@ object ClassNodeIntersector {
 
                     method.visibleAnnotations = visibleAnnotations
                     method.invisibleAnnotations = invisibleAnnotations
+                    method.visibleTypeAnnotations = visibleTypeAnnotations
+                    method.invisibleTypeAnnotations = invisibleTypeAnnotations
+                    method.visibleParameterAnnotations = visibleParameterAnnotations
+                    method.invisibleParameterAnnotations = invisibleParameterAnnotations
 
                     // TODO This is not fully correct
                     method.annotationDefault = methodA.annotationDefault
