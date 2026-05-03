@@ -87,7 +87,7 @@ abstract class GenerateStubApi @Inject constructor(
                 params.preserveMethodBodies.getOrElse(false)
             )
 
-            extras.parallelStream().forEach { artifact ->
+            extras.forEach { artifact ->
                 val directory = outputDir.resolve(
                     artifact.componentId.get().replace(':', '_')
                 )

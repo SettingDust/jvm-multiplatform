@@ -36,45 +36,38 @@ internal object CommonSuperClassFinder {
             }
 
             if (!chainAExhausted) {
-                val superA = classpathA.entry("$superNameA.class")
+                // Use lightweight ClassReader to resolve only the super-class name,
+                // avoiding full ClassNode allocation for ancestor traversal.
+                val resolvedSuperA = classpathA.superClassOf("$superNameA.class")
 
-                if (superA != null) {
-                    superNameA = superA.superName
+                if (resolvedSuperA == null) {
+                    // Could not resolve the class OR reached java/lang/Object (superName is null).
+                    // Both cases mean this chain can no longer advance.
+                    chainAExhausted = true
+                } else {
+                    superNameA = resolvedSuperA
 
                     if (superNameA in visitedSuperNamesB) {
                         return superNameA
                     }
 
                     visitedSuperNamesA.add(superNameA)
-
-                    if (superNameA == null) {
-                        chainAExhausted = true
-                    }
-                } else {
-                    // Parent class not resolvable in this version's classpath.
-                    // Do NOT return superNameA here — it may not exist in the other version.
-                    // Mark the chain as exhausted and let the other side continue.
-                    chainAExhausted = true
                 }
             }
 
             if (!chainBExhausted) {
-                val superB = classpathB.entry("$superNameB.class")
+                val resolvedSuperB = classpathB.superClassOf("$superNameB.class")
 
-                if (superB != null) {
-                    superNameB = superB.superName
+                if (resolvedSuperB == null) {
+                    chainBExhausted = true
+                } else {
+                    superNameB = resolvedSuperB
 
                     if (superNameB in visitedSuperNamesA) {
                         return superNameB
                     }
 
                     visitedSuperNamesB.add(superNameB)
-
-                    if (superNameB == null) {
-                        chainBExhausted = true
-                    }
-                } else {
-                    chainBExhausted = true
                 }
             }
         }

@@ -1,6 +1,7 @@
 package net.msrandom.stubs
 
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import net.msrandom.stubs.ClassNodeIntersector.intersectClassNodes
@@ -36,6 +37,7 @@ object StubGenerator {
         output.writeBytes(writer.toByteArray())
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     fun generateStub(
         classpaths: Iterable<List<GenerateStubApi.ResolvedArtifact>>,
         extraExcludes: List<String>,
@@ -107,7 +109,7 @@ object StubGenerator {
 
                     manifestPath.outputStream().use(Manifest()::write)
 
-                    runBlocking(Dispatchers.IO) {
+                    runBlocking(Dispatchers.IO.limitedParallelism(16)) {
                         filteredEntries.map { entry ->
                             launch {
                                 val streams = classpaths.map {
@@ -121,6 +123,11 @@ object StubGenerator {
                                 }
 
                                 createFileIntersection(streams, path, preserveMethodBodies)
+
+                                // Release bytecodeCache entry for this class (super-class entries remain cached)
+                                for (classpath in classpaths) {
+                                    classpath.evictEntry(entry)
+                                }
                             }
                         }.forEach { it.join() }
                     }
@@ -174,6 +181,22 @@ object StubGenerator {
 
         fun hasEntry(name: String): Boolean {
             return jarFiles.any { it.getEntry(name) != null }
+        }
+
+        fun evictEntry(name: String) {
+            bytecodeCache.remove(name)
+        }
+
+        fun superClassOf(name: String): String? {
+            val bytecode = bytecodeCache.computeIfAbsent(name) {
+                for (jar in jarFiles) {
+                    val entry = jar.getEntry(name) ?: continue
+                    return@computeIfAbsent jar.getInputStream(entry).use { it.readBytes() }
+                }
+                null
+            } ?: return null
+
+            return ClassReader(bytecode).superName
         }
 
         fun entry(name: String): ClassNode? {
