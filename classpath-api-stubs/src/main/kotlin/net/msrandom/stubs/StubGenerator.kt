@@ -7,7 +7,10 @@ import kotlinx.coroutines.runBlocking
 import net.msrandom.stubs.ClassNodeIntersector.intersectClassNodes
 import org.objectweb.asm.ClassReader
 import org.objectweb.asm.ClassWriter
+import org.objectweb.asm.tree.AbstractInsnNode
 import org.objectweb.asm.tree.ClassNode
+import org.objectweb.asm.tree.FrameNode
+import org.objectweb.asm.tree.MethodNode
 import java.io.File
 import java.net.URI
 import java.nio.file.FileSystems
@@ -32,9 +35,60 @@ object StubGenerator {
 
         val writer = ClassWriter(0)
 
-        node.accept(writer)
+        try {
+            node.accept(writer)
+        } catch (exception: IllegalArgumentException) {
+            logIntersectionFailure(streams, node, output, preserveMethodBodies, exception)
+            throw exception
+        }
 
         output.writeBytes(writer.toByteArray())
+    }
+
+    private fun logIntersectionFailure(
+        streams: List<Pair<ClasspathLoader, ClassNode>>,
+        intersection: ClassNode,
+        output: Path,
+        preserveMethodBodies: Boolean,
+        exception: IllegalArgumentException,
+    ) {
+        System.err.println("[classpath-api-stubs] Failed to emit intersection for ${intersection.name} -> $output")
+        System.err.println("[classpath-api-stubs] preserveMethodBodies=$preserveMethodBodies, mergedVersion=${describeVersion(intersection.version)}, message=${exception.message}")
+
+        intersection.methods
+            .filter { it.hasFrames() }
+            .forEach { method ->
+                System.err.println("[classpath-api-stubs] mergedMethod ${method.debugSummary()}")
+            }
+
+        streams.forEachIndexed { index, (classpath, node) ->
+            val source = classpath.entrySource("${node.name}.class")
+            System.err.println(
+                "[classpath-api-stubs] source[$index] class=${node.name}, version=${describeVersion(node.version)}, from=${source?.absolutePath ?: "<missing>"}"
+            )
+
+            node.methods
+                .filter { it.hasFrames() }
+                .forEach { method ->
+                    System.err.println("[classpath-api-stubs] source[$index] method ${method.debugSummary()}")
+                }
+        }
+    }
+
+    private fun describeVersion(version: Int): String {
+        val javaVersion = version - 44
+
+        return "$version(Java $javaVersion)"
+    }
+
+    private fun MethodNode.hasFrames(): Boolean =
+        instructions.iterator().asSequence().any { it is FrameNode }
+
+    private fun MethodNode.debugSummary(): String {
+        val instructionCount = instructions.iterator().asSequence().count()
+        val frameCount = instructions.iterator().asSequence().count { it is FrameNode }
+
+        return "$name$desc frames=$frameCount instructions=$instructionCount maxStack=$maxStack maxLocals=$maxLocals"
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -210,7 +264,13 @@ object StubGenerator {
 
             // Parse fresh ClassNode from bytecode to avoid shared mutable state
             return ClassNode().apply {
-                ClassReader(bytecode).accept(this, 0)
+                ClassReader(bytecode).accept(this, ClassReader.EXPAND_FRAMES)
+            }
+        }
+
+        fun entrySource(name: String): File? {
+            return jarFiles.indices.firstNotNullOfOrNull { index ->
+                allFiles[index].takeIf { jarFiles[index].getEntry(name) != null }
             }
         }
 
