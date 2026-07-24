@@ -4,6 +4,7 @@ import com.sun.source.tree.ImportTree
 import com.sun.tools.javac.api.JavacTrees
 import com.sun.tools.javac.processing.JavacProcessingEnvironment
 import com.sun.tools.javac.tree.JCTree
+import com.sun.tools.javac.tree.TreeScanner
 import com.sun.tools.javac.util.Context
 import net.msrandom.classextensions.ClassExtension
 import net.msrandom.classextensions.ExtensionInject
@@ -76,7 +77,24 @@ class ClassExtensionsProcessor(
                 }
             }
 
-            baseTree.implementing = JavaCompilerList.from((baseTree.implementing + extensionTree.implementing).distinct())
+            val offset = baseTree.pos - extensionTree.pos
+
+            for (member in injectedMembers) {
+                member.accept(object : JCTree.Visitor() {
+                    override fun visitTree(tree: JCTree) {
+                        tree.pos += offset
+                    }
+                })
+
+                member.accept(object : TreeScanner() {
+                    override fun scan(tree: JCTree?) {
+                        tree?.pos += offset
+                        super.scan(tree)
+                    }
+                })
+            }
+
+            baseTree.implementing = JavaCompilerList.from((baseTree.implementing + extensionTree.implementing).distinctBy { it.type.asElement().name })
             baseTree.defs = JavaCompilerList.from(baseTree.members + injectedMembers)
 
             val imports = (baseCompilationUnit.imports + extensionCompilationUnit.imports).filterNot {
