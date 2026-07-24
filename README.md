@@ -1,4 +1,12 @@
 # jvm-multiplatform
+
+## Fork Changes
+This fork adds the following committed changes relative to `upstream/main`.
+
+- **Classpath API stubs:** generation now processes class entries in parallel, releases JAR and bytecode-cache resources, and adds a `preserveMethodBodies` task property (disabled by default) for methods with identical bytecode. Intersection also retains more signature, annotation, parameter, and legacy-frame information. ([e77650d](https://github.com/SettingDust/jvm-multiplatform/commit/e77650d), [8455991](https://github.com/SettingDust/jvm-multiplatform/commit/8455991), [4306f26](https://github.com/SettingDust/jvm-multiplatform/commit/4306f26), [085d931](https://github.com/SettingDust/jvm-multiplatform/commit/085d931), [1e7eb3c](https://github.com/SettingDust/jvm-multiplatform/commit/1e7eb3c))
+- **KMP actual stubs:** when K2 compiles a common source fragment with a matching refining-fragment `actual`, the compiler plugin retains its `expect` declaration; it also suppresses false `ACTUAL_WITHOUT_EXPECT` diagnostics for actual declarations. ([b9873eb](https://github.com/SettingDust/jvm-multiplatform/commit/b9873eb))
+- **Build and publishing:** the wrapper is on Gradle 9.4.1, with KSP 2.3.6 and IntelliJ Platform Gradle Plugin 2.14.0. Maven publication runs from `main` after `gradle.properties` changes or by manual dispatch, using JDK 21. ([a8bd0dc](https://github.com/SettingDust/jvm-multiplatform/commit/a8bd0dc), [92e9cc7](https://github.com/SettingDust/jvm-multiplatform/commit/92e9cc7))
+
 ### A collection of multiplatform utilities for the JVM
 
 These utilities use static linkage for handling common code, rather than dynamic linking (JARs in the classpath) which is what's usually used in the JVM Ecosystem
