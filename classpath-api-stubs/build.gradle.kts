@@ -35,3 +35,11 @@ dependencies {
     testImplementation(kotlin("test"))
     testImplementation(gradleTestKit())
 }
+
+tasks.test {
+    // TestKit runs Gradle itself on the current JDK; production bytecode still targets Java 8.
+    javaLauncher.set(javaToolchains.launcherFor {
+        languageVersion.set(JavaLanguageVersion.of(JavaVersion.current().majorVersion))
+    })
+    systemProperty("stubs.test.classpath", sourceSets.main.get().runtimeClasspath.asPath)
+}

@@ -3,6 +3,7 @@ package net.msrandom.stubs
 import net.msrandom.stubs.ClassNodeIntersector.intersectClassNodes
 import org.objectweb.asm.ClassReader
 import org.objectweb.asm.ClassWriter
+import org.objectweb.asm.Opcodes
 import org.objectweb.asm.tree.ClassNode
 import java.io.File
 import java.net.URI
@@ -24,11 +25,21 @@ object StubGenerator {
     private fun createFileIntersection(
         streams: List<Pair<ClasspathLoader, ClassNode>>,
         output: Path,
+        preserveMethodBodies: Boolean,
     ) {
         output.parent?.createDirectories()
 
         val (_, node) = streams.reduce { (classpathA, nodeA), (classpathB, nodeB) ->
             classpathB to intersectClassNodes(nodeA, nodeB, classpathA, classpathB)
+        }
+
+        if (preserveMethodBodies && streams.size > 1) {
+            for (method in node.methods) {
+                val originals = streams.map { (_, original) ->
+                    original.methods.first { it.name == method.name && it.desc == method.desc } as CodeMethodNode
+                }
+                MethodBodies.preserve(method, originals)
+            }
         }
 
         val writer = ClassWriter(0)
@@ -55,7 +66,8 @@ object StubGenerator {
     fun generateStub(
         classpaths: Iterable<List<GenerateStubApi.ResolvedArtifact>>,
         extraExcludes: List<String>,
-        output: Path
+        output: Path,
+        preserveMethodBodies: Boolean = false,
     ): List<GenerateStubApi.ResolvedArtifact> {
         val exclude = listOf(
             "org.jetbrains",
@@ -105,7 +117,7 @@ object StubGenerator {
         val rest = classpaths.subList(1, classpaths.size)
 
         val entries = first.intersectionIncluded.asSequence().flatMap {
-            getClassEntries(ZipInputStream(it.inputStream()))
+            ZipInputStream(it.inputStream()).use { stream -> getClassEntries(stream).toList() }
         }
 
         val filteredEntries = entries.filter { entry ->
@@ -132,7 +144,7 @@ object StubGenerator {
 
                     path.parent?.createDirectories()
 
-                    createFileIntersection(streams, path)
+                    createFileIntersection(streams, path, preserveMethodBodies)
                 }
             }
 
@@ -174,7 +186,11 @@ object StubGenerator {
 
         fun entry(name: String) = cache.computeIfAbsent(name) {
             loader.getResourceAsStream(name)?.let { stream ->
-                ClassNode().apply {
+                object : ClassNode(Opcodes.ASM9) {
+                    override fun visitMethod(access: Int, name: String, descriptor: String, signature: String?, exceptions: Array<out String>?): CodeMethodNode {
+                        return CodeMethodNode(access, name, descriptor, signature, exceptions).also(methods::add)
+                    }
+                }.apply {
                     stream.use(::ClassReader).accept(this, 0)
                 }
             }

@@ -10,12 +10,13 @@ import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.CacheableTask
-import org.gradle.api.tasks.CompileClasspath
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputFile
 import org.gradle.api.tasks.Nested
 import org.gradle.api.tasks.Optional
 import org.gradle.api.tasks.OutputDirectory
+import org.gradle.api.tasks.PathSensitive
+import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
 import java.nio.file.StandardCopyOption
 import kotlin.io.path.ExperimentalPathApi
@@ -34,10 +35,14 @@ abstract class GenerateStubApi : DefaultTask() {
     abstract val apiFileName: Property<String>
         @Input get
 
+    abstract val preserveMethodBodies: Property<Boolean>
+        @Input get
+
     abstract val outputDirectory: DirectoryProperty
         @OutputDirectory get
 
     init {
+        preserveMethodBodies.convention(false)
         apiFileName.convention("api-stub.jar")
         outputDirectory.convention(project.layout.dir(project.provider { temporaryDir }))
     }
@@ -52,7 +57,7 @@ abstract class GenerateStubApi : DefaultTask() {
 
         val apiFile = outputDirectory.resolve(apiFileName.get())
 
-        val extras = StubGenerator.generateStub(classpaths.get(), excludes.get(), apiFile)
+        val extras = StubGenerator.generateStub(classpaths.get(), excludes.get(), apiFile, preserveMethodBodies.get())
 
         for (artifact in extras) {
             val directory = outputDirectory.resolve(artifact.componentId.get().replace(':', '_'))
@@ -86,8 +91,9 @@ abstract class GenerateStubApi : DefaultTask() {
             @Input
             get
 
+        // Full bytes and the copied filename affect output, even with preservation disabled.
         val file: RegularFileProperty
-            @CompileClasspath
+            @PathSensitive(PathSensitivity.NAME_ONLY)
             @InputFile
             get
 
