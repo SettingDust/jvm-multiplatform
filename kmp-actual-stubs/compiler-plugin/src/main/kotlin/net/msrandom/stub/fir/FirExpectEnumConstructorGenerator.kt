@@ -12,14 +12,16 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.name.Name
 
-class FirExpectEnumConstructorGenerator(session: FirSession) : FirDeclarationGenerationExtension(session) {
+@OptIn(org.jetbrains.kotlin.fir.symbols.SymbolInternals::class)
+internal class FirExpectEnumConstructorGenerator(session: FirSession, private val inputs: CallableInputs) : FirDeclarationGenerationExtension(session) {
 
     override fun getCallableNamesForClass(
         classSymbol: FirClassSymbol<*>,
         context: MemberGenerationContext
     ): Set<Name> {
-        if ((classSymbol.classKind == ClassKind.ENUM_CLASS || classSymbol.classKind == ClassKind.ENUM_ENTRY)
-            && classSymbol.source.getModifierList()?.contains(KtTokens.EXPECT_KEYWORD) == true) {
+        if (classSymbol.classKind == ClassKind.ENUM_CLASS &&
+            classSymbol.source.getModifierList()?.contains(KtTokens.EXPECT_KEYWORD) == true &&
+            inputs.classMissing(classSymbol.fir as org.jetbrains.kotlin.fir.declarations.FirRegularClass, session)) {
             return setOf(Name.special("<init>"))
         }
 

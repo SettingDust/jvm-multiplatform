@@ -1,5 +1,7 @@
 package net.msrandom.stub.ir
 
+import net.msrandom.stub.fir.isGeneratedStub
+import org.jetbrains.kotlin.fir.backend.FirMetadataSource
 import net.msrandom.stub.STUB
 import net.msrandom.stub.UNSUPPORTED_OPERATION_EXCEPTION
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
@@ -36,7 +38,7 @@ class IrStubBodyGenerator(val context: IrPluginContext) : IrVisitor<Unit, IsExpe
 
     @OptIn(UnsafeDuringIrConstructionAPI::class)
     override fun visitClass(declaration: IrClass, data: IsExpectClassMember) {
-        if (data || declaration.hasAnnotation(STUB)) {
+        if (data || declaration.hasAnnotation(STUB) || (declaration.metadata as? FirMetadataSource)?.fir?.isGeneratedStub == true) {
             if (declaration.kind != ClassKind.INTERFACE) {
                 if (declaration.constructors.toList().isEmpty()) {
                     declaration.addConstructor().apply {
@@ -60,13 +62,13 @@ class IrStubBodyGenerator(val context: IrPluginContext) : IrVisitor<Unit, IsExpe
     }
 
     override fun visitFunction(declaration: IrFunction, data: IsExpectClassMember) {
-        if (data || declaration.hasAnnotation(STUB)) {
+        if (data || declaration.hasAnnotation(STUB) || (declaration.metadata as? FirMetadataSource)?.fir?.isGeneratedStub == true) {
             declaration.body = createErrorBody(declaration)
         }
     }
 
     override fun visitProperty(declaration: IrProperty, data: IsExpectClassMember) {
-        if (data || declaration.hasAnnotation(STUB)) {
+        if (data || declaration.hasAnnotation(STUB) || (declaration.metadata as? FirMetadataSource)?.fir?.isGeneratedStub == true) {
             declaration.backingField?.initializer = createErrorBody(declaration)
             declaration.getter?.body = createErrorBody(declaration)
             if (declaration.isVar) declaration.setter?.body = createErrorBody(declaration)

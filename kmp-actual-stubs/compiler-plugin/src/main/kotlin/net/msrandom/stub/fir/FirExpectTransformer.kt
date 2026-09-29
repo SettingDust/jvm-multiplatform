@@ -26,7 +26,15 @@ import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.name.StandardClassIds
 import org.jetbrains.kotlin.types.ConstantValueKind
 
-class FirExpectTransformer(session: FirSession) : FirStatusTransformerExtension(session) {
+@OptIn(org.jetbrains.kotlin.fir.symbols.SymbolInternals::class)
+internal class FirExpectTransformer(session: FirSession, private val inputs: CallableInputs) : FirStatusTransformerExtension(session) {
+    private val headers = CallableHeaders(inputs)
+
+    private fun missing(declaration: FirCallableDeclaration): Boolean {
+        val candidates = inputs.candidates(declaration, session) ?: return false
+        // Completeness and exact source/owner identity have already been checked.
+        return candidates.isEmpty() || candidates.all { headers.matches(declaration, it, session) == false }
+    }
 
     override fun needTransformStatus(declaration: FirDeclaration): Boolean {
         return declaration.source.getModifierList()?.let { KtTokens.EXPECT_KEYWORD in it } ?: false
@@ -38,7 +46,10 @@ class FirExpectTransformer(session: FirSession) : FirStatusTransformerExtension(
         containingClass: FirClassLikeSymbol<*>?,
         isLocal: Boolean
     ): FirDeclarationStatus {
-        addStubAnnotation(function)
+        if (containingClass == null) {
+            if (!missing(function)) return status
+        } else if (inputs.classMissing(containingClass.fir as? FirRegularClass ?: return status, session) != true) return status
+        function.isGeneratedStub = true
         addSuppressions(function,
             FirErrors.NON_MEMBER_FUNCTION_NO_BODY,
             FirErrors.NON_ABSTRACT_FUNCTION_WITH_NO_BODY
@@ -52,7 +63,10 @@ class FirExpectTransformer(session: FirSession) : FirStatusTransformerExtension(
         containingClass: FirClassLikeSymbol<*>?,
         isLocal: Boolean
     ): FirDeclarationStatus {
-        addStubAnnotation(property)
+        if (containingClass == null) {
+            if (!missing(property)) return status
+        } else if (inputs.classMissing(containingClass.fir as? FirRegularClass ?: return status, session) != true) return status
+        property.isGeneratedStub = true
         addSuppressions(property,
             FirErrors.MUST_BE_INITIALIZED,
             FirErrors.EXTENSION_PROPERTY_MUST_HAVE_ACCESSORS_OR_BE_ABSTRACT,
@@ -66,36 +80,20 @@ class FirExpectTransformer(session: FirSession) : FirStatusTransformerExtension(
         containingClass: FirClassLikeSymbol<*>?,
         isLocal: Boolean
     ): FirDeclarationStatus {
-        addStubAnnotation(regularClass)
+        if (!inputs.classMissing(regularClass, session)) return status
+        regularClass.isGeneratedStub = true
 
-        regularClass.transformDeclarations(object : FirTransformer<Nothing?>() {
-            override fun <E : FirElement> transformElement(
-                element: E,
-                data: Nothing?
-            ): E = element
-
-            override fun transformDeclaration(declaration: FirDeclaration, data: Nothing?): FirDeclaration {
-                addSuppressions(declaration,
-                    FirErrors.NON_ABSTRACT_FUNCTION_WITH_NO_BODY,
-                    FirErrors.MUST_BE_INITIALIZED,
-                    FirErrors.EXTENSION_PROPERTY_MUST_HAVE_ACCESSORS_OR_BE_ABSTRACT,
-                )
-
-                return super.transformDeclaration(declaration, data)
-            }
-        }, null)
+        regularClass.processAllDeclarations(session) { symbol ->
+            val declaration = symbol.fir as? FirDeclaration ?: return@processAllDeclarations
+            addSuppressions(declaration,
+                FirErrors.NON_ABSTRACT_FUNCTION_WITH_NO_BODY,
+                FirErrors.MUST_BE_INITIALIZED,
+                FirErrors.MUST_BE_INITIALIZED_OR_BE_ABSTRACT,
+                FirErrors.EXTENSION_PROPERTY_MUST_HAVE_ACCESSORS_OR_BE_ABSTRACT,
+            )
+        }
 
         return status.transform { isExpect = false }
-    }
-
-    private fun addStubAnnotation(declaration: FirDeclaration) {
-        if (declaration.getAnnotationByClassId(STUB, session) == null) {
-            declaration.replaceAnnotations(declaration.annotations + buildAnnotation {
-                annotationTypeRef = STUB.createConeType(session).toFirResolvedTypeRef()
-                argumentMapping = FirEmptyAnnotationArgumentMapping
-                source = declaration.source?.fakeElement(KtFakeSourceElementKind.PluginGenerated)
-            })
-        }
     }
 
     private fun addSuppressions(declaration: FirDeclaration, vararg diagnostics: AbstractKtDiagnosticFactory) {

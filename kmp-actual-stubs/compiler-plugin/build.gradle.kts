@@ -23,6 +23,11 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+    dependsOn(tasks.jar)
+    systemProperty("callable.plugin", tasks.jar.get().archiveFile.get().asFile.absolutePath)
+    systemProperty("callable.evidence", layout.buildDirectory.dir("callable-evidence").get().asFile.absolutePath)
+    systemProperty("p4.replay", providers.gradleProperty("p4Replay").orElse("false").get())
+    systemProperty("p4.root", layout.buildDirectory.dir("p4-final-acceptance").get().asFile.absolutePath)
 }
 
 publishing {
