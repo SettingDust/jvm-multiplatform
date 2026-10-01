@@ -17,14 +17,9 @@ class CommonSuperClassFinderTest {
         val loaders = jars.map { StubGenerator.ClasspathLoader(listOf(it.toFile()), emptyList()) }
         try {
             val nodes = listOf("A", "B", "D").map { ClassNode().also { node -> node.superName = "C" } }
-            assertEquals(
-                "C",
-                CommonSuperClassFinder.findCommonSuper(nodes, loaders),
-            )
-            assertEquals(
-                "C",
-                CommonSuperClassFinder.findCommonSuper(nodes.reversed(), loaders.reversed()),
-            )
+            for (order in listOf(listOf(0, 1), listOf(1, 0), listOf(0, 1, 2), listOf(0, 2, 1), listOf(1, 0, 2), listOf(1, 2, 0), listOf(2, 0, 1), listOf(2, 1, 0))) {
+                assertEquals("C", CommonSuperClassFinder.findCommonSuper(order.map { nodes[it] }, order.map { loaders[it] }))
+            }
         } finally {
             loaders.forEach { it.close() }
             jars.forEach { it.toFile().delete() }

@@ -24,6 +24,14 @@ kotlin {
     jvmToolchain(8)
 }
 
+tasks.test {
+    javaLauncher.set(javaToolchains.launcherFor {
+        languageVersion.set(JavaLanguageVersion.of(JavaVersion.current().majorVersion))
+    })
+    systemProperty("stubs.test.classpath", sourceSets.main.get().runtimeClasspath.asPath)
+    environment("STUBS_TEST_JAVA_HOME", System.getProperty("java.home"))
+}
+
 repositories {
     mavenCentral()
 }

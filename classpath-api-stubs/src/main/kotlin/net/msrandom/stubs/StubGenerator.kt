@@ -127,7 +127,7 @@ object StubGenerator {
                 manifestPath.outputStream().use(Manifest()::write)
 
                 for (entry in filteredEntries) {
-                    val streams = classpaths.map {
+                    val streams = if (classpaths.size == 1) emptyList() else classpaths.map {
                         it to it.entry(entry)!!
                     }
 
@@ -135,7 +135,13 @@ object StubGenerator {
 
                     path.parent?.createDirectories()
 
-                    createFileIntersection(streams, path)
+                    if (classpaths.size == 1) {
+                        first.resourceStream(entry)!!.use { input ->
+                            path.outputStream().use { input.copyTo(it) }
+                        }
+                    } else {
+                        createFileIntersection(streams, path)
+                    }
                 }
             }
 
@@ -173,8 +179,11 @@ object StubGenerator {
                 .toTypedArray(),
         )
 
+        fun resourceStream(name: String) = loader.getResource(name)?.openConnection()
+            ?.also { it.useCaches = false }?.getInputStream()
+
         fun entry(name: String) = cache.computeIfAbsent(name) {
-            loader.getResourceAsStream(name)?.let { stream ->
+            resourceStream(name)?.let { stream ->
                 ClassNode().apply {
                     stream.use(::ClassReader).accept(this, 0)
                 }

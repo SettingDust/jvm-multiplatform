@@ -134,6 +134,90 @@ internal object SignatureIntersector {
         b: String?,
     ): String? = intersectFieldSignatures(listOf(a, b))
 
+    // Validate against the emitted declaration, not merely against another Signature.
+    private fun scope(parameters: List<FormalTypeParameter>, outer: Map<String, FormalTypeParameter>) =
+        (outer + parameters.associateBy { it.name }).also {
+            require(parameters.map { it.name }.distinct().size == parameters.size)
+            parameters.forEach { parameter ->
+                val bounds = listOfNotNull(parameter.classBound) + parameter.interfaceBounds
+                require(bounds.isNotEmpty())
+                bounds.forEach { bound ->
+                    require(bound is TypeSignature.Reference && bound !is TypeSignature.Reference.Array)
+                    erase(bound, it)
+                }
+            }
+        }
+
+    private fun erase(type: TypeSignature, variables: Map<String, FormalTypeParameter>, visiting: Set<String> = emptySet()): String =
+        when (type) {
+            is TypeSignature.Primitive -> {
+                require(type.identifier in "BCDFIJSZV")
+                type.identifier.toString()
+            }
+            is TypeSignature.Reference.Array -> "[" + erase(type.typeSignature, variables, visiting).also { require(it != "V") }
+            is TypeSignature.Reference.TypeVariable -> {
+                require(type.name !in visiting)
+                val parameter = requireNotNull(variables[type.name])
+                erase(parameter.classBound ?: parameter.interfaceBounds.first(), variables, visiting + type.name)
+            }
+            is TypeSignature.Reference.Class -> {
+                val segments = listOf(type.base) + type.innerClasses
+                segments.forEach { segment ->
+                    require(segment.name.isNotEmpty())
+                    segment.typeArguments.filterIsInstance<TypeArgument.Bounded>().forEach { argument ->
+                        require(argument.type is TypeSignature.Reference)
+                        checkReferences(argument.type, variables)
+                    }
+                }
+                "L" + segments.joinToString("$") { it.name } + ";"
+            }
+        }
+
+    // Checking references separately permits legal recursive bounds such as T : Comparable<T>.
+    private fun checkReferences(type: TypeSignature, variables: Map<String, FormalTypeParameter>) {
+        when (type) {
+            is TypeSignature.Reference.TypeVariable -> require(type.name in variables)
+            is TypeSignature.Reference.Array -> checkReferences(type.typeSignature, variables)
+            is TypeSignature.Reference.Class -> (listOf(type.base) + type.innerClasses).forEach { segment ->
+                segment.typeArguments.filterIsInstance<TypeArgument.Bounded>().forEach { checkReferences(it.type, variables) }
+            }
+            is TypeSignature.Primitive -> Unit
+        }
+    }
+
+    fun validClass(signature: String?, superName: String, interfaces: List<String>): String? =
+        signature?.takeIf {
+            runCatching {
+                val parsed = parseClassSignature(it)
+                require(write(parsed) == it)
+                val variables = scope(parsed.typeParameters, emptyMap())
+                require(erase(parsed.superClass, variables) == "L$superName;")
+                require(parsed.superInterfaces.map { type -> erase(type, variables) } == interfaces.map { name -> "L$name;" })
+            }.isSuccess
+        }
+
+    fun validMember(signature: String?, descriptor: String, classSignature: String?, method: Boolean): String? =
+        signature?.takeIf {
+            runCatching {
+                val outer = classSignature?.let { value -> scope(parseClassSignature(value).typeParameters, emptyMap()) } ?: emptyMap()
+                if (method) {
+                    val parsed = parseMethodSignature(it)
+                    require(write(parsed) == it)
+                    val variables = scope(parsed.typeParameters, outer)
+                    val parameters = parsed.parameterTypes.map { type -> erase(type, variables).also { value -> require(value != "V") } }
+                    require("(" + parameters.joinToString("") + ")" + erase(parsed.returnType, variables) == descriptor)
+                    parsed.exceptionTypes.forEach { type ->
+                        require(type !is TypeSignature.Reference.Array)
+                        erase(type, variables)
+                    }
+                } else {
+                    val parsed = parseTypeSignature(it)
+                    require(parsed is TypeSignature.Reference && write(parsed) == it)
+                    require(erase(parsed, outer) == descriptor)
+                }
+            }.isSuccess
+        }
+
     private fun write(signature: Signature): String {
         val writer = SignatureWriter()
         signature.accept(writer)

@@ -22,11 +22,7 @@ object ClassNodeIntersector {
         superName: String,
         interfaces: List<String>,
     ): String? {
-        if (signature == null) return null
-        val parsed = runCatching { parseClassSignature(signature) }.getOrNull() ?: return null
-        if (parsed.superClass.base.name != superName) return null
-        if (!parsed.superInterfaces.all { it.base.name in interfaces }) return null
-        return signature
+        return SignatureIntersector.validClass(signature, superName, interfaces)
     }
 
     internal fun intersectClassNodes(
@@ -52,6 +48,10 @@ object ClassNodeIntersector {
                 node.superName!!,
                 node.interfaces,
             )
+
+        val memberClassSignature = node.signature.takeIf {
+            nodes.map { runCatching { parseClassSignature(it.signature).typeParameters }.getOrNull() }.distinct().size == 1
+        }
 
         node.innerClasses =
             first.innerClasses.mapNotNull { innerClass ->
@@ -82,7 +82,14 @@ object ClassNodeIntersector {
                     present.fold(field.access) { access, other -> AccessIntersector.intersect(access, other.access) },
                     field.name,
                     field.desc,
-                    SignatureIntersector.intersectFieldSignatures(present.map { it.signature }),
+                    SignatureIntersector.validMember(
+                        SignatureIntersector.intersectFieldSignatures(present.mapIndexed { index, member ->
+                            SignatureIntersector.validMember(member.signature, member.desc, nodes[index].signature, false)
+                        }),
+                        field.desc,
+                        memberClassSignature,
+                        false,
+                    ),
                     null,
                 ).also {
                     it.visibleAnnotations = intersectAnnotations(present.map { field -> field.visibleAnnotations })
@@ -99,7 +106,14 @@ object ClassNodeIntersector {
                     present.fold(method.access) { access, other -> AccessIntersector.intersect(access, other.access) },
                     method.name,
                     method.desc,
-                    SignatureIntersector.intersectMethodSignatures(present.map { it.signature }),
+                    SignatureIntersector.validMember(
+                        SignatureIntersector.intersectMethodSignatures(present.mapIndexed { index, member ->
+                            SignatureIntersector.validMember(member.signature, member.desc, nodes[index].signature, true)
+                        }),
+                        method.desc,
+                        memberClassSignature,
+                        true,
+                    ),
                     present
                         .drop(1)
                         .fold(present.first().exceptions.toList()) { common, other ->
