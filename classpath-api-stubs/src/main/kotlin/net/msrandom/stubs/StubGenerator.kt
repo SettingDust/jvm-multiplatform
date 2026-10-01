@@ -33,12 +33,13 @@ object StubGenerator {
             classpathB to intersectClassNodes(nodeA, nodeB, classpathA, classpathB)
         }
 
-        if (preserveMethodBodies && streams.size > 1) {
+        if (streams.size > 1) {
             for (method in node.methods) {
                 val originals = streams.map { (_, original) ->
                     original.methods.first { it.name == method.name && it.desc == method.desc } as CodeMethodNode
                 }
-                MethodBodies.preserve(method, originals)
+                ClassNodeIntersector.applyParameterMetadata(method, originals)
+                if (preserveMethodBodies) MethodBodies.preserve(method, originals)
             }
         }
 
@@ -136,15 +137,18 @@ object StubGenerator {
                 manifestPath.outputStream().use(Manifest()::write)
 
                 for (entry in filteredEntries) {
-                    val streams = classpaths.map {
-                        it to it.entry(entry)!!
-                    }
-
                     val path = fileSystem.getPath(entry)
-
                     path.parent?.createDirectories()
-
-                    createFileIntersection(streams, path, preserveMethodBodies)
+                    if (classpaths.size == 1) {
+                        val connection = first.loader.getResource(entry)!!.openConnection()
+                        connection.useCaches = false
+                        connection.getInputStream().use { stream ->
+                            path.outputStream().use { stream.copyTo(it) }
+                        }
+                    } else {
+                        val streams = classpaths.map { it to it.entry(entry)!! }
+                        createFileIntersection(streams, path, preserveMethodBodies)
+                    }
                 }
             }
 
@@ -185,7 +189,7 @@ object StubGenerator {
         )
 
         fun entry(name: String) = cache.computeIfAbsent(name) {
-            loader.getResourceAsStream(name)?.let { stream ->
+            loader.getResource(name)?.openConnection()?.also { it.useCaches = false }?.getInputStream()?.let { stream ->
                 object : ClassNode(Opcodes.ASM9) {
                     override fun visitMethod(access: Int, name: String, descriptor: String, signature: String?, exceptions: Array<out String>?): CodeMethodNode {
                         return CodeMethodNode(access, name, descriptor, signature, exceptions).also(methods::add)
