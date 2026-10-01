@@ -12,45 +12,28 @@ internal object CommonSuperClassFinder {
     ): String? {
         var superNameA = nodeA.superName
         var superNameB = nodeB.superName
-
         val visitedSuperNamesA = mutableListOf<String?>(superNameA)
         val visitedSuperNamesB = hashSetOf<String?>(superNameB)
 
         while (true) {
-            for (name in visitedSuperNamesA) {
-                if (name in visitedSuperNamesB) {
-                    return name
-                }
-            }
+            for (name in visitedSuperNamesA) if (name in visitedSuperNamesB) return name
 
             if (superNameA != null) {
-                val superA = classpathA.entry("$superNameA.class")
-
+                val superA = classpathA.header("$superNameA.class")
                 if (superA != null) {
-                    superNameA = superA.superName
-
-                    if (superNameA in visitedSuperNamesB) {
-                        return superNameA
-                        break
-                    }
-
+                    superNameA = superA
+                    if (superNameA in visitedSuperNamesB) return superNameA
                     visitedSuperNamesA.add(superNameA)
                 } else {
                     return superNameA
-                    break
                 }
             }
 
             if (superNameB != null) {
-                val superB = classpathB.entry("$superNameB.class")
-
+                val superB = classpathB.header("$superNameB.class")
                 if (superB != null) {
-                    superNameB = superB.superName
-
-                    if (superNameB in visitedSuperNamesA) {
-                        return superNameB
-                    }
-
+                    superNameB = superB
+                    if (superNameB in visitedSuperNamesA) return superNameB
                     visitedSuperNamesB.add(superNameB)
                 } else {
                     return superNameB

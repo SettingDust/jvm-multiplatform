@@ -2,6 +2,7 @@ package net.msrandom.stubs
 
 import net.msrandom.stubs.ClassNodeIntersector.intersectClassNodes
 import org.objectweb.asm.ClassReader
+import org.objectweb.asm.ClassVisitor
 import org.objectweb.asm.ClassWriter
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.tree.ClassNode
@@ -20,7 +21,13 @@ import kotlin.io.path.outputStream
 import kotlin.io.path.writeBytes
 
 object StubGenerator {
-
+    internal data class ArtifactSpec(
+        val file: File,
+        val componentId: String?,
+        val type: GenerateStubApi.ResolvedArtifact.Type?,
+        val moduleId: String?,
+        val moduleVersion: String?,
+    )
 
     private fun createFileIntersection(
         streams: List<Pair<ClasspathLoader, ClassNode>>,
@@ -29,172 +36,171 @@ object StubGenerator {
     ) {
         output.parent?.createDirectories()
 
-        val (_, node) = streams.reduce { (classpathA, nodeA), (classpathB, nodeB) ->
-            classpathB to intersectClassNodes(nodeA, nodeB, classpathA, classpathB)
-        }
+        val (_, node) =
+            streams.reduce { (classpathA, nodeA), (classpathB, nodeB) ->
+                classpathB to intersectClassNodes(nodeA, nodeB, classpathA, classpathB)
+            }
 
         if (preserveMethodBodies && streams.size > 1) {
             for (method in node.methods) {
-                val originals = streams.map { (_, original) ->
-                    original.methods.first { it.name == method.name && it.desc == method.desc } as CodeMethodNode
-                }
+                val originals =
+                    streams.map { (_, original) ->
+                        original.methods.first { it.name == method.name && it.desc == method.desc } as CodeMethodNode
+                    }
                 MethodBodies.preserve(method, originals)
             }
         }
 
         val writer = ClassWriter(0)
-
         node.accept(writer)
-
         output.writeBytes(writer.toByteArray())
     }
 
-    private fun getClassEntries(stream: ZipInputStream) = sequence {
-        while (true) {
-            val entry = stream.nextEntry
-
-            if (entry == null) {
-                break
-            }
-
-            if (entry.name.endsWith(".class")) {
-                yield(entry.name)
+    private fun getClassEntries(stream: ZipInputStream) =
+        sequence {
+            while (true) {
+                val entry = stream.nextEntry ?: break
+                if (entry.name.endsWith(".class")) yield(entry.name)
             }
         }
-    }
 
-    fun generateStub(
-        classpaths: Iterable<List<GenerateStubApi.ResolvedArtifact>>,
+    internal fun generateStub(
+        classpaths: Iterable<List<ArtifactSpec>>,
         extraExcludes: List<String>,
         output: Path,
         preserveMethodBodies: Boolean = false,
-    ): List<GenerateStubApi.ResolvedArtifact> {
-        val exclude = listOf(
-            "org.jetbrains",
-            "org.apache",
-            "org.codehaus",
-            "org.ow2",
-            "org.lwjgl",
-            "com.google",
-            "net.java",
-            "ca.weblite",
-            "com.ibm",
-            "org.scala-lang",
-            "org.clojure",
-            "io.netty",
-            "org.slf4j",
-            "org.lz4",
-            "org.joml",
-            "net.sf",
-            "it.unimi",
-            "commons-",
-            "com.github",
-            "org.antlr",
-            "org.openjdk",
-            "net.minecrell",
-            "org.jline",
-            "net.jodah",
-            "org.checkerframework",
-            "org.spongepowered",
-            "net.fabricmc:sponge",
-        ) + extraExcludes
+    ): List<ArtifactSpec> {
+        val exclude =
+            listOf(
+                "org.jetbrains",
+                "org.apache",
+                "org.codehaus",
+                "org.ow2",
+                "org.lwjgl",
+                "com.google",
+                "net.java",
+                "ca.weblite",
+                "com.ibm",
+                "org.scala-lang",
+                "org.clojure",
+                "io.netty",
+                "org.slf4j",
+                "org.lz4",
+                "org.joml",
+                "net.sf",
+                "it.unimi",
+                "commons-",
+                "com.github",
+                "org.antlr",
+                "org.openjdk",
+                "net.minecrell",
+                "org.jline",
+                "net.jodah",
+                "org.checkerframework",
+                "org.spongepowered",
+                "net.fabricmc:sponge",
+            ) + extraExcludes
 
-        val classpaths = classpaths.map { artifacts ->
-            val (excluded, included) = artifacts.partition {
-                val type = it.type.orNull
-                val id = it.componentId.orNull ?: return@partition false
-
-                type === GenerateStubApi.ResolvedArtifact.Type.Module && exclude.any(id::startsWith)
-            }
-
-            ClasspathLoader(
-                included.map { it.file.asFile.get() },
-                excluded,
-            )
-        }
-
-        val first = classpaths.first()
-        val rest = classpaths.subList(1, classpaths.size)
-
-        val entries = first.intersectionIncluded.asSequence().flatMap {
-            ZipInputStream(it.inputStream()).use { stream -> getClassEntries(stream).toList() }
-        }
-
-        val filteredEntries = entries.filter { entry ->
-            rest.all {
-                it.loader.getResource(entry) != null
-            }
-        }
-
-        output.deleteIfExists()
-        FileSystems.newFileSystem(URI.create("jar:${output.toUri()}"), mapOf("create" to true.toString()))
-            .use { fileSystem ->
-                val manifestPath = fileSystem.getPath(JarFile.MANIFEST_NAME)
-
-                manifestPath.parent.createDirectory()
-
-                manifestPath.outputStream().use(Manifest()::write)
-
-                for (entry in filteredEntries) {
-                    val streams = classpaths.map {
-                        it to it.entry(entry)!!
+        val loaders = mutableListOf<ClasspathLoader>()
+        try {
+            for (artifacts in classpaths) {
+                val (excluded, included) =
+                    artifacts.partition {
+                        val id = it.componentId ?: return@partition false
+                        it.type == GenerateStubApi.ResolvedArtifact.Type.Module && exclude.any(id::startsWith)
                     }
+                loaders += ClasspathLoader(included.map(ArtifactSpec::file), excluded)
+            }
 
-                    val path = fileSystem.getPath(entry)
+            val first = loaders.first()
+            val rest = loaders.subList(1, loaders.size)
+            val entries =
+                first.intersectionIncluded.asSequence().flatMap { file ->
+                    ZipInputStream(file.inputStream()).use { getClassEntries(it).toList() }.asSequence()
+                }
+            val filteredEntries = entries.filter { entry -> rest.all { it.loader.getResource(entry) != null } }
 
-                    path.parent?.createDirectories()
-
-                    createFileIntersection(streams, path, preserveMethodBodies)
+            output.deleteIfExists()
+            FileSystems.newFileSystem(URI.create("jar:${output.toUri()}"), mapOf("create" to true.toString())).use { fileSystem ->
+                val manifestPath = fileSystem.getPath(JarFile.MANIFEST_NAME)
+                manifestPath.parent.createDirectory()
+                manifestPath.outputStream().use(Manifest()::write)
+                for (entry in filteredEntries) {
+                    val target = fileSystem.getPath(entry)
+                    if (loaders.size == 1) {
+                        target.parent?.createDirectories()
+                        first.resourceStream(entry)!!.use { stream ->
+                            target.outputStream().use { stream.copyTo(it) }
+                        }
+                    } else {
+                        val streams = loaders.map { it to it.entry(entry)!! }
+                        createFileIntersection(streams, target, preserveMethodBodies)
+                    }
                 }
             }
 
-        val intersectedExcludedArtifacts = classpaths.map { it.intersectionExcluded }.reduce { a, b ->
-            val artifactsA = a.groupBy { it.moduleId.get() }
-
-            val artifactsB = b.groupBy { it.moduleId.get() }
-
-            val intersections = artifactsA.keys.intersect(artifactsB.keys)
-
-            intersections.flatMap { id ->
-                val relevantArtifactsA = artifactsA[id] ?: return@flatMap emptyList()
-                val relevantArtifactsB = artifactsB[id] ?: return@flatMap emptyList()
-
-                listOf(relevantArtifactsA, relevantArtifactsB).minBy {
-                    it[0].moduleVersion.get()
+            return loaders.map { it.intersectionExcluded }.reduce { a, b ->
+                val artifactsA = a.groupBy { it.moduleId }
+                val artifactsB = b.groupBy { it.moduleId }
+                artifactsA.keys.intersect(artifactsB.keys).flatMap { id ->
+                    val relevantA = artifactsA[id] ?: return@flatMap emptyList()
+                    val relevantB = artifactsB[id] ?: return@flatMap emptyList()
+                    listOf(relevantA, relevantB).minBy { it[0].moduleVersion ?: "" }
                 }
             }
+        } finally {
+            loaders.asReversed().forEach { it.close() }
         }
-
-        for (classpath in classpaths) {
-            // TODO Make this exception safe
-            classpath.close()
-        }
-
-        return intersectedExcludedArtifacts
     }
 
     internal class ClasspathLoader(
         val intersectionIncluded: List<File>,
-        val intersectionExcluded: List<GenerateStubApi.ResolvedArtifact>,
-        private val cache: MutableMap<String, ClassNode?> = hashMapOf(),
+        val intersectionExcluded: List<ArtifactSpec>,
     ) : AutoCloseable {
-        val loader = URLClassLoader(
-            (intersectionIncluded + intersectionExcluded.map { it.file.asFile.get() })
-                .map { it.toURI().toURL() }
-                .toTypedArray(),
-        )
+        val loader =
+            URLClassLoader(
+                (intersectionIncluded + intersectionExcluded.map(ArtifactSpec::file))
+                    .map { it.toURI().toURL() }
+                    .toTypedArray(),
+            )
 
-        fun entry(name: String) = cache.computeIfAbsent(name) {
-            loader.getResourceAsStream(name)?.let { stream ->
+        // Each worker owns its stream; closing another loader must not close a shared cached JAR.
+        fun resourceStream(name: String) =
+            loader.getResource(name)?.openConnection()?.also { it.useCaches = false }?.getInputStream()
+
+        fun entry(name: String): ClassNode? =
+            resourceStream(name)?.use { stream ->
                 object : ClassNode(Opcodes.ASM9) {
-                    override fun visitMethod(access: Int, name: String, descriptor: String, signature: String?, exceptions: Array<out String>?): CodeMethodNode {
-                        return CodeMethodNode(access, name, descriptor, signature, exceptions).also(methods::add)
-                    }
-                }.apply {
-                    stream.use(::ClassReader).accept(this, 0)
-                }
+                    override fun visitMethod(
+                        access: Int,
+                        name: String,
+                        descriptor: String,
+                        signature: String?,
+                        exceptions: Array<out String>?,
+                    ): CodeMethodNode = CodeMethodNode(access, name, descriptor, signature, exceptions).also(methods::add)
+                }.also { node -> ClassReader(stream).accept(node, 0) }
             }
-        }
+
+        fun header(name: String): String? =
+            resourceStream(name)?.use { stream ->
+                var superName: String? = null
+                ClassReader(stream).accept(
+                    object : ClassVisitor(Opcodes.ASM9) {
+                        override fun visit(
+                            version: Int,
+                            access: Int,
+                            name: String,
+                            signature: String?,
+                            superNameValue: String?,
+                            interfaces: Array<out String>?,
+                        ) {
+                            superName = superNameValue
+                        }
+                    },
+                    ClassReader.SKIP_CODE or ClassReader.SKIP_DEBUG or ClassReader.SKIP_FRAMES,
+                )
+                superName
+            }
 
         override fun close() = loader.close()
     }

@@ -163,6 +163,9 @@ class PreserveMethodBodiesTest {
     ) = GradleRunner
         .create()
         .withProjectDir(directory)
+        .apply {
+            System.getenv("STUBS_TEST_GRADLE_HOME")?.let { withGradleInstallation(File(it)) }
+        }
         .withArguments(*arguments, "--stacktrace", "--console=plain", "--build-cache", "--max-workers=2")
         .build()
 
