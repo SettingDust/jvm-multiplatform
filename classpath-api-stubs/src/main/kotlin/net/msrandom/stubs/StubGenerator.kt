@@ -27,9 +27,9 @@ object StubGenerator {
     ) {
         output.parent?.createDirectories()
 
-        val (_, node) = streams.reduce { (classpathA, nodeA), (classpathB, nodeB) ->
-            classpathB to intersectClassNodes(nodeA, nodeB, classpathA, classpathB)
-        }
+        val classpaths = streams.map { it.first }
+        val nodes = streams.map { it.second }
+        val node = intersectClassNodes(nodes, classpaths)
 
         val writer = ClassWriter(0)
 
@@ -101,11 +101,14 @@ object StubGenerator {
             )
         }
 
-        val first = classpaths.first()
+        try {
+            val first = classpaths.first()
         val rest = classpaths.subList(1, classpaths.size)
 
         val entries = first.intersectionIncluded.asSequence().flatMap {
-            getClassEntries(ZipInputStream(it.inputStream()))
+            ZipInputStream(it.inputStream()).use { stream ->
+                getClassEntries(stream).toList().asSequence()
+            }
         }
 
         val filteredEntries = entries.filter { entry ->
@@ -153,12 +156,10 @@ object StubGenerator {
             }
         }
 
-        for (classpath in classpaths) {
-            // TODO Make this exception safe
-            classpath.close()
+            return intersectedExcludedArtifacts
+        } finally {
+            classpaths.forEach(ClasspathLoader::close)
         }
-
-        return intersectedExcludedArtifacts
     }
 
     internal class ClasspathLoader(

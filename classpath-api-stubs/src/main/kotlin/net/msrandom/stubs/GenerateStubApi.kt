@@ -10,12 +10,13 @@ import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.CacheableTask
-import org.gradle.api.tasks.CompileClasspath
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputFile
 import org.gradle.api.tasks.Nested
 import org.gradle.api.tasks.Optional
 import org.gradle.api.tasks.OutputDirectory
+import org.gradle.api.tasks.PathSensitive
+import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
 import java.nio.file.StandardCopyOption
 import kotlin.io.path.ExperimentalPathApi
@@ -87,7 +88,7 @@ abstract class GenerateStubApi : DefaultTask() {
             get
 
         val file: RegularFileProperty
-            @CompileClasspath
+            @PathSensitive(PathSensitivity.NAME_ONLY)
             @InputFile
             get
 
@@ -100,6 +101,7 @@ abstract class GenerateStubApi : DefaultTask() {
                     moduleId.set(component.moduleIdentifier)
                     moduleVersion.set(component.version)
                 }
+
                 is ProjectComponentIdentifier -> {
                     type.set(Type.Project)
                 }

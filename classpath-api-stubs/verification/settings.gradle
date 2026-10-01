@@ -1,0 +1,3 @@
+rootProject.name = 'classpath-api-stubs-verification'
+include(':classpath-api-stubs')
+project(':classpath-api-stubs').projectDir = file('..')

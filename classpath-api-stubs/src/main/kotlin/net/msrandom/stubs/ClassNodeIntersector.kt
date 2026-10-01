@@ -2,27 +2,116 @@ package net.msrandom.stubs
 
 import net.msrandom.stubs.StubGenerator.ClasspathLoader
 import net.msrandom.stubs.signature.SignatureIntersector
+import net.msrandom.stubs.signature.parseClassSignature
 import org.objectweb.asm.tree.AnnotationNode
 import org.objectweb.asm.tree.ClassNode
 import org.objectweb.asm.tree.FieldNode
 import org.objectweb.asm.tree.InnerClassNode
 import org.objectweb.asm.tree.MethodNode
-import kotlin.math.min
 
 object ClassNodeIntersector {
-    private fun intersectAnnotations(
-        annotationsA: List<AnnotationNode>?,
-        annotationsB: List<AnnotationNode>?,
-    ): List<AnnotationNode>? {
-        if (annotationsA == null || annotationsB == null) {
-            return null
+    private fun intersectAnnotations(annotations: List<List<AnnotationNode>?>): List<AnnotationNode>? {
+        if (annotations.any { it == null }) return null
+        return annotations.first()!!.filter { annotation ->
+            annotations.drop(1).all { other -> other!!.any { it.desc == annotation.desc } }
         }
+    }
 
-        val matchingAnnotations = annotationsA.filter { annotation ->
-            annotationsB.any { it.desc == annotation.desc }
-        }
+    private fun validClassSignature(
+        signature: String?,
+        superName: String,
+        interfaces: List<String>,
+    ): String? {
+        if (signature == null) return null
+        val parsed = runCatching { parseClassSignature(signature) }.getOrNull() ?: return null
+        if (parsed.superClass.base.name != superName) return null
+        if (!parsed.superInterfaces.all { it.base.name in interfaces }) return null
+        return signature
+    }
 
-        return matchingAnnotations
+    internal fun intersectClassNodes(
+        nodes: List<ClassNode>,
+        classpaths: List<ClasspathLoader>,
+    ): ClassNode {
+        require(nodes.size == classpaths.size && nodes.isNotEmpty())
+        val first = nodes.first()
+        val node = ClassNode()
+        node.version = nodes.minOf { it.version }
+        node.access = first.access
+        node.name = first.name
+        node.superName = CommonSuperClassFinder.findCommonSuper(nodes, classpaths)
+        node.interfaces =
+            nodes
+                .drop(1)
+                .fold(first.interfaces.toSet()) { common, current ->
+                    common intersect current.interfaces.toSet()
+                }.toList()
+        node.signature =
+            validClassSignature(
+                SignatureIntersector.intersectClassSignatures(nodes.map { it.signature }),
+                node.superName!!,
+                node.interfaces,
+            )
+
+        node.innerClasses =
+            first.innerClasses.mapNotNull { innerClass ->
+                val matching = nodes.drop(1).mapNotNull { other -> other.innerClasses.firstOrNull { it.name == innerClass.name } }
+                if (matching.size != nodes.size - 1) {
+                    null
+                } else {
+                    InnerClassNode(
+                        innerClass.name,
+                        innerClass.outerName,
+                        innerClass.innerName,
+                        matching.fold(innerClass.access) { access, other -> AccessIntersector.intersect(access, other.access) },
+                    )
+                }
+            }
+        node.outerClass = first.outerClass
+        node.outerMethod = first.outerMethod
+        node.outerMethodDesc = first.outerMethodDesc
+        node.visibleAnnotations = intersectAnnotations(nodes.map { it.visibleAnnotations })
+        node.invisibleAnnotations = intersectAnnotations(nodes.map { it.invisibleAnnotations })
+
+        node.fields =
+            first.fields.mapNotNull { field ->
+                val fields = nodes.map { current -> current.fields.firstOrNull { it.name == field.name && it.desc == field.desc } }
+                if (fields.any { it == null }) return@mapNotNull null
+                val present = fields.map { it!! }
+                FieldNode(
+                    present.fold(field.access) { access, other -> AccessIntersector.intersect(access, other.access) },
+                    field.name,
+                    field.desc,
+                    SignatureIntersector.intersectFieldSignatures(present.map { it.signature }),
+                    null,
+                ).also {
+                    it.visibleAnnotations = intersectAnnotations(present.map { field -> field.visibleAnnotations })
+                    it.invisibleAnnotations = intersectAnnotations(present.map { field -> field.invisibleAnnotations })
+                }
+            }
+
+        node.methods =
+            first.methods.mapNotNull { method ->
+                val methods = nodes.map { current -> current.methods.firstOrNull { it.name == method.name && it.desc == method.desc } }
+                if (methods.any { it == null }) return@mapNotNull null
+                val present = methods.map { it!! }
+                MethodNode(
+                    present.fold(method.access) { access, other -> AccessIntersector.intersect(access, other.access) },
+                    method.name,
+                    method.desc,
+                    SignatureIntersector.intersectMethodSignatures(present.map { it.signature }),
+                    present
+                        .drop(1)
+                        .fold(present.first().exceptions.toList()) { common, other ->
+                            common.filter { it in other.exceptions }
+                        }.toTypedArray(),
+                ).also {
+                    it.visibleAnnotations = intersectAnnotations(present.map { current -> current.visibleAnnotations })
+                    it.invisibleAnnotations = intersectAnnotations(present.map { current -> current.invisibleAnnotations })
+                    it.annotationDefault = method.annotationDefault
+                }
+            }
+        return node
     }
 
     internal fun intersectClassNodes(
@@ -30,89 +119,5 @@ object ClassNodeIntersector {
         nodeB: ClassNode,
         classpathA: ClasspathLoader,
         classpathB: ClasspathLoader,
-    ): ClassNode {
-        val node = ClassNode()
-
-        node.version = min(nodeA.version, nodeB.version)
-        node.access = nodeA.access
-        node.name = nodeA.name
-
-        node.signature = SignatureIntersector.intersectClassSignatures(nodeA.signature, nodeB.signature)
-
-        node.superName = CommonSuperClassFinder.findCommonSuper(nodeA, nodeB, classpathA, classpathB)
-        node.interfaces = nodeA.interfaces.intersect(nodeB.interfaces.toSet()).toList()
-
-        node.innerClasses =
-            nodeA.innerClasses.mapNotNull { innerClass ->
-                val inner = nodeB.innerClasses.firstOrNull {
-                    it.name == innerClass.name
-                }
-
-                if (inner == null) {
-                    null
-                } else {
-                    InnerClassNode(
-                        innerClass.name,
-                        innerClass.outerName,
-                        innerClass.innerName,
-                        AccessIntersector.intersect(inner.access, innerClass.access),
-                    )
-                }
-            }
-
-        node.outerClass = nodeA.outerClass
-        node.outerMethod = nodeA.outerMethod
-        node.outerMethodDesc = nodeA.outerMethodDesc
-
-        node.visibleAnnotations = intersectAnnotations(nodeA.visibleAnnotations, nodeB.visibleAnnotations)
-        node.invisibleAnnotations = intersectAnnotations(nodeA.invisibleAnnotations, nodeB.invisibleAnnotations)
-
-        node.fields =
-            nodeA.fields.mapNotNull { fieldA ->
-                nodeB.fields.firstOrNull { it.name == fieldA.name && it.desc == fieldA.desc }?.let { fieldB ->
-                    val access = AccessIntersector.intersect(fieldB.access, fieldA.access)
-
-                    val signature = SignatureIntersector.intersectFieldSignature(fieldA.signature, fieldB.signature)
-
-                    FieldNode(access, fieldB.name, fieldB.desc, signature, null).also {
-                        it.visibleAnnotations =
-                            intersectAnnotations(fieldA.visibleAnnotations, fieldB.visibleAnnotations)
-                        it.invisibleAnnotations =
-                            intersectAnnotations(fieldA.invisibleAnnotations, fieldB.invisibleAnnotations)
-                    }
-                }
-            }
-
-        node.methods =
-            nodeA.methods.mapNotNull { methodA ->
-                nodeB.methods.firstOrNull { it.name == methodA.name && it.desc == methodA.desc }?.let { methodB ->
-                    val access = AccessIntersector.intersect(methodB.access, methodA.access)
-
-                    val signature = SignatureIntersector.intersectMethodSignature(methodA.signature, methodB.signature)
-
-                    val visibleAnnotations =
-                        intersectAnnotations(methodA.visibleAnnotations, methodB.visibleAnnotations)
-                    val invisibleAnnotations =
-                        intersectAnnotations(methodA.invisibleAnnotations, methodB.invisibleAnnotations)
-
-                    val method = MethodNode(
-                        access,
-                        methodB.name,
-                        methodB.desc,
-                        signature,
-                        methodB.exceptions.toTypedArray().intersect(methodA.exceptions.toSet()).toTypedArray(),
-                    )
-
-                    method.visibleAnnotations = visibleAnnotations
-                    method.invisibleAnnotations = invisibleAnnotations
-
-                    // TODO This is not fully correct
-                    method.annotationDefault = methodA.annotationDefault
-
-                    method
-                }
-            }
-
-        return node
-    }
+    ): ClassNode = intersectClassNodes(listOf(nodeA, nodeB), listOf(classpathA, classpathB))
 }

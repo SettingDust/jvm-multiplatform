@@ -5,57 +5,36 @@ import org.objectweb.asm.tree.ClassNode
 
 internal object CommonSuperClassFinder {
     internal fun findCommonSuper(
+        nodes: List<ClassNode>,
+        classpaths: List<ClasspathLoader>,
+    ): String {
+        require(nodes.size == classpaths.size && nodes.isNotEmpty())
+
+        val chains = nodes.indices.map { index ->
+            val chain = linkedSetOf<String>()
+            var name = nodes[index].superName
+            while (name != null) {
+                val parent = classpaths[index].entry("$name.class")
+                if (parent == null) {
+                    chain.clear()
+                    break
+                }
+                if (!chain.add(name)) {
+                    error("Inheritance cycle while resolving $name")
+                }
+                name = parent.superName
+            }
+            chain.add("java/lang/Object")
+            chain
+        }
+
+        return chains.first().first { candidate -> chains.all { candidate in it } }
+    }
+
+    internal fun findCommonSuper(
         nodeA: ClassNode,
         nodeB: ClassNode,
         classpathA: ClasspathLoader,
         classpathB: ClasspathLoader,
-    ): String? {
-        var superNameA = nodeA.superName
-        var superNameB = nodeB.superName
-
-        val visitedSuperNamesA = mutableListOf<String?>(superNameA)
-        val visitedSuperNamesB = hashSetOf<String?>(superNameB)
-
-        while (true) {
-            for (name in visitedSuperNamesA) {
-                if (name in visitedSuperNamesB) {
-                    return name
-                }
-            }
-
-            if (superNameA != null) {
-                val superA = classpathA.entry("$superNameA.class")
-
-                if (superA != null) {
-                    superNameA = superA.superName
-
-                    if (superNameA in visitedSuperNamesB) {
-                        return superNameA
-                        break
-                    }
-
-                    visitedSuperNamesA.add(superNameA)
-                } else {
-                    return superNameA
-                    break
-                }
-            }
-
-            if (superNameB != null) {
-                val superB = classpathB.entry("$superNameB.class")
-
-                if (superB != null) {
-                    superNameB = superB.superName
-
-                    if (superNameB in visitedSuperNamesA) {
-                        return superNameB
-                    }
-
-                    visitedSuperNamesB.add(superNameB)
-                } else {
-                    return superNameB
-                }
-            }
-        }
-    }
+    ): String = findCommonSuper(listOf(nodeA, nodeB), listOf(classpathA, classpathB))
 }
