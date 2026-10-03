@@ -29,9 +29,9 @@ object StubGenerator {
     ) {
         output.parent?.createDirectories()
 
-        val (_, node) = streams.reduce { (classpathA, nodeA), (classpathB, nodeB) ->
-            classpathB to intersectClassNodes(nodeA, nodeB, classpathA, classpathB)
-        }
+        val classpaths = streams.map { it.first }
+        val nodes = streams.map { it.second }
+        val node = intersectClassNodes(nodes, classpaths)
 
         if (preserveMethodBodies && streams.size > 1) {
             for (method in node.methods) {
@@ -113,11 +113,14 @@ object StubGenerator {
             )
         }
 
-        val first = classpaths.first()
+        try {
+            val first = classpaths.first()
         val rest = classpaths.subList(1, classpaths.size)
 
         val entries = first.intersectionIncluded.asSequence().flatMap {
-            ZipInputStream(it.inputStream()).use { stream -> getClassEntries(stream).toList() }
+            ZipInputStream(it.inputStream()).use { stream ->
+                getClassEntries(stream).toList().asSequence()
+            }
         }
 
         val filteredEntries = entries.filter { entry ->
@@ -136,7 +139,7 @@ object StubGenerator {
                 manifestPath.outputStream().use(Manifest()::write)
 
                 for (entry in filteredEntries) {
-                    val streams = classpaths.map {
+                    val streams = if (classpaths.size == 1) emptyList() else classpaths.map {
                         it to it.entry(entry)!!
                     }
 
@@ -144,7 +147,13 @@ object StubGenerator {
 
                     path.parent?.createDirectories()
 
-                    createFileIntersection(streams, path, preserveMethodBodies)
+                    if (classpaths.size == 1) {
+                        first.resourceStream(entry)!!.use { input ->
+                            path.outputStream().use { input.copyTo(it) }
+                        }
+                    } else {
+                        createFileIntersection(streams, path, preserveMethodBodies)
+                    }
                 }
             }
 
@@ -165,12 +174,10 @@ object StubGenerator {
             }
         }
 
-        for (classpath in classpaths) {
-            // TODO Make this exception safe
-            classpath.close()
+            return intersectedExcludedArtifacts
+        } finally {
+            classpaths.forEach(ClasspathLoader::close)
         }
-
-        return intersectedExcludedArtifacts
     }
 
     internal class ClasspathLoader(
@@ -184,10 +191,19 @@ object StubGenerator {
                 .toTypedArray(),
         )
 
+        fun resourceStream(name: String) = loader.getResource(name)?.openConnection()
+            ?.also { it.useCaches = false }?.getInputStream()
+
         fun entry(name: String) = cache.computeIfAbsent(name) {
-            loader.getResourceAsStream(name)?.let { stream ->
+            resourceStream(name)?.let { stream ->
                 object : ClassNode(Opcodes.ASM9) {
-                    override fun visitMethod(access: Int, name: String, descriptor: String, signature: String?, exceptions: Array<out String>?): CodeMethodNode {
+                    override fun visitMethod(
+                        access: Int,
+                        name: String,
+                        descriptor: String,
+                        signature: String?,
+                        exceptions: Array<out String>?,
+                    ): CodeMethodNode {
                         return CodeMethodNode(access, name, descriptor, signature, exceptions).also(methods::add)
                     }
                 }.apply {

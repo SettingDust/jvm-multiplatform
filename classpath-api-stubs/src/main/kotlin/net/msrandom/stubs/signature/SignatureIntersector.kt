@@ -3,221 +3,224 @@ package net.msrandom.stubs.signature
 import org.objectweb.asm.signature.SignatureWriter
 
 internal object SignatureIntersector {
-    private fun intersectTypeArguments(a: TypeArgument, b: TypeArgument): TypeArgument? {
-        if (a == TypeArgument.Unbounded) {
-            return b
-        } else if (b == TypeArgument.Unbounded) {
-            return a
-        }
-
-        a as TypeArgument.Bounded
-        b as TypeArgument.Bounded
-
-        val type = intersectTypeSignatures(a.type, b.type)
-
-        if (type == null) {
-            return null
-        }
-
-        val variance = if (a.variance == b.variance) {
-            a.variance
-        } else {
-            TypeArgument.Bounded.Variance.Invariant
-        }
-
-        return TypeArgument.Bounded(type, variance)
-    }
-
-    private fun intersectTypeArgumentLists(a: List<TypeArgument>, b: List<TypeArgument>): List<TypeArgument>? {
-        if (a.size != b.size) {
-            return null
-        }
-
-        return a.zip(b) { a, b ->
-            val argument = intersectTypeArguments(a, b)
-
-            if (argument == null) {
-                return null
+    private fun sameType(
+        a: TypeSignature,
+        b: TypeSignature,
+        variables: Map<String, String> = emptyMap(),
+    ): Boolean =
+        when {
+            a is TypeSignature.Primitive && b is TypeSignature.Primitive -> {
+                a.identifier == b.identifier
             }
 
-            argument
-        }
-    }
+            a is TypeSignature.Reference.TypeVariable && b is TypeSignature.Reference.TypeVariable -> {
+                variables[a.name]?.let { it == b.name } ?: (a.name == b.name)
+            }
 
-    private fun intersectClassTypeSignatures(
-        a: TypeSignature.Reference.Class,
-        b: TypeSignature.Reference.Class,
-    ): TypeSignature.Reference.Class? {
-        if (a.base.name != b.base.name) {
-            return null
-        }
+            a is TypeSignature.Reference.Array && b is TypeSignature.Reference.Array -> {
+                sameType(a.typeSignature, b.typeSignature, variables)
+            }
 
-        if (a.innerClasses.size != b.innerClasses.size) {
-            return null
-        }
+            a is TypeSignature.Reference.Class && b is TypeSignature.Reference.Class -> {
+                a.base.name == b.base.name && sameArguments(a.base.typeArguments, b.base.typeArguments, variables) &&
+                    a.innerClasses.size == b.innerClasses.size &&
+                    a.innerClasses.zip(b.innerClasses).all { (left, right) ->
+                        left.name == right.name && sameArguments(left.typeArguments, right.typeArguments, variables)
+                    }
+            }
 
-        for ((a, b) in a.innerClasses.zip(b.innerClasses)) {
-            if (a.name != b.name) {
-                return null
+            else -> {
+                false
             }
         }
 
-        // All names match, intersect type arguments
-        val baseTypeArguments = intersectTypeArgumentLists(a.base.typeArguments, b.base.typeArguments) ?: return null
+    private fun sameArguments(
+        a: List<TypeArgument>,
+        b: List<TypeArgument>,
+        variables: Map<String, String>,
+    ): Boolean =
+        a.size == b.size &&
+            a.zip(b).all { (left, right) ->
+                when {
+                    left === TypeArgument.Unbounded && right === TypeArgument.Unbounded -> {
+                        true
+                    }
 
-        val innerClasses = a.innerClasses.zip(b.innerClasses) { a, b ->
-            val typeArguments = intersectTypeArgumentLists(a.typeArguments, b.typeArguments)
+                    left is TypeArgument.Bounded && right is TypeArgument.Bounded -> {
+                        left.variance == right.variance && sameType(left.type, right.type, variables)
+                    }
 
-            if (typeArguments == null) {
-                return null
+                    else -> {
+                        false
+                    }
+                }
             }
 
-            ClassNameSegment(a.name, typeArguments)
+    private fun sameClass(
+        a: ClassSignature,
+        b: ClassSignature,
+    ): Boolean {
+        if (a.typeParameters.size != b.typeParameters.size || a.superInterfaces.size != b.superInterfaces.size) return false
+        val variables = a.typeParameters.mapIndexed { index, parameter -> parameter.name to b.typeParameters[index].name }.toMap()
+        if (a.typeParameters.indices.any { index ->
+                val left = a.typeParameters[index]
+                val right = b.typeParameters[index]
+                left.classBound != null != (right.classBound != null) ||
+                    (left.classBound != null && !sameType(left.classBound, right.classBound!!, variables)) ||
+                    left.interfaceBounds.size != right.interfaceBounds.size ||
+                    left.interfaceBounds.zip(right.interfaceBounds).any { (x, y) -> !sameType(x, y, variables) }
+            }
+        ) {
+            return false
         }
-
-        return TypeSignature.Reference.Class(ClassNameSegment(a.base.name, baseTypeArguments), innerClasses)
-    }
-
-    private fun intersectGenericTypeSignatures(a: TypeSignature.Reference, b: TypeSignature.Reference): TypeSignature.Reference? {
-        if (a::class != b::class) {
-            return null
-        }
-
-        return when (a) {
-            is TypeSignature.Reference.Array -> {
-                val base =
-                    intersectTypeSignatures(a.typeSignature, (b as TypeSignature.Reference.Array).typeSignature) ?: return null
-
-                TypeSignature.Reference.Array(base)
-            }
-
-            is TypeSignature.Reference.Class -> intersectClassTypeSignatures(a, b as TypeSignature.Reference.Class)
-            is TypeSignature.Reference.TypeVariable -> {
-                // We add the 'a' names generally in formal type parameters, thus we can assume a name will reference ones from the 'a' names
-                // TODO This should eventually just be based on indices rather than names
-                a
-            }
+        if (!sameType(a.superClass, b.superClass, variables)) return false
+        return a.superInterfaces.sortedBy { it.base.name }.zip(b.superInterfaces.sortedBy { it.base.name }).all { (x, y) ->
+            sameType(x, y, variables)
         }
     }
 
-    private fun intersectTypeSignatures(a: TypeSignature, b: TypeSignature): TypeSignature? {
-        if (a::class != b::class) {
-            return null
+    private fun sameMethod(
+        a: MethodSignature,
+        b: MethodSignature,
+    ): Boolean {
+        if (a.typeParameters.size != b.typeParameters.size || a.parameterTypes.size != b.parameterTypes.size ||
+            a.exceptionTypes.size != b.exceptionTypes.size
+        ) {
+            return false
+        }
+        val variables = a.typeParameters.mapIndexed { index, parameter -> parameter.name to b.typeParameters[index].name }.toMap()
+        return a.typeParameters.indices.all { index ->
+            val left = a.typeParameters[index]
+            val right = b.typeParameters[index]
+            left.classBound != null == (right.classBound != null) &&
+                (left.classBound == null || sameType(left.classBound, right.classBound!!, variables)) &&
+                left.interfaceBounds.size == right.interfaceBounds.size &&
+                left.interfaceBounds.zip(right.interfaceBounds).all { (x, y) -> sameType(x, y, variables) }
+        } && a.parameterTypes.zip(b.parameterTypes).all { (x, y) -> sameType(x, y, variables) } &&
+            sameType(a.returnType, b.returnType, variables) &&
+            a.exceptionTypes.zip(b.exceptionTypes).all { (x, y) -> sameType(x, y, variables) }
+    }
+
+    fun intersectClassSignatures(signatures: List<String?>): String? {
+        if (signatures.isEmpty() || signatures.any { it == null }) return null
+        val parsed = runCatching { signatures.map { parseClassSignature(it!!) } }.getOrNull() ?: return null
+        return parsed.first().takeIf { parsed.drop(1).all { other -> sameClass(it, other) } }?.let(::write)
+    }
+
+    fun intersectClassSignatures(
+        a: String?,
+        b: String?,
+    ): String? = intersectClassSignatures(listOf(a, b))
+
+    fun intersectMethodSignatures(signatures: List<String?>): String? {
+        if (signatures.isEmpty() || signatures.any { it == null }) return null
+        val parsed = runCatching { signatures.map { parseMethodSignature(it!!) } }.getOrNull() ?: return null
+        return parsed.first().takeIf { parsed.drop(1).all { other -> sameMethod(it, other) } }?.let(::write)
+    }
+
+    fun intersectMethodSignature(
+        a: String?,
+        b: String?,
+    ): String? = intersectMethodSignatures(listOf(a, b))
+
+    fun intersectFieldSignatures(signatures: List<String?>): String? {
+        if (signatures.isEmpty() || signatures.any { it == null }) return null
+        val parsed = runCatching { signatures.map { parseTypeSignature(it!!) } }.getOrNull() ?: return null
+        return parsed.first().takeIf { parsed.drop(1).all { other -> sameType(it, other) } }?.let(::write)
+    }
+
+    fun intersectFieldSignature(
+        a: String?,
+        b: String?,
+    ): String? = intersectFieldSignatures(listOf(a, b))
+
+    // Validate against the emitted declaration, not merely against another Signature.
+    private fun scope(parameters: List<FormalTypeParameter>, outer: Map<String, FormalTypeParameter>) =
+        (outer + parameters.associateBy { it.name }).also {
+            require(parameters.map { it.name }.distinct().size == parameters.size)
+            parameters.forEach { parameter ->
+                val bounds = listOfNotNull(parameter.classBound) + parameter.interfaceBounds
+                require(bounds.isNotEmpty())
+                bounds.forEach { bound ->
+                    require(bound is TypeSignature.Reference && bound !is TypeSignature.Reference.Array)
+                    erase(bound, it)
+                }
+            }
         }
 
-        return when (a) {
+    private fun erase(type: TypeSignature, variables: Map<String, FormalTypeParameter>, visiting: Set<String> = emptySet()): String =
+        when (type) {
             is TypeSignature.Primitive -> {
-                if (a.identifier == (b as TypeSignature.Primitive).identifier) {
-                    a
-                } else {
-                    null
-                }
+                require(type.identifier in "BCDFIJSZV")
+                type.identifier.toString()
             }
-
-            is TypeSignature.Reference -> intersectGenericTypeSignatures(a, b as TypeSignature.Reference)
-        }
-    }
-
-    private fun intersectTypeParameterLists(a: List<FormalTypeParameter>, b: List<FormalTypeParameter>): List<FormalTypeParameter>? {
-        if (a.size != b.size) {
-            // Not 1:1
-            val emptyA = a.isEmpty()
-            val emptyB = b.isEmpty()
-
-            if (emptyA || emptyB) {
-                // TODO Filter parameters to only include ones with bounds available in the target classpath
-                return if (emptyA) {
-                    b
-                } else {
-                    a
-                }
+            is TypeSignature.Reference.Array -> "[" + erase(type.typeSignature, variables, visiting).also { require(it != "V") }
+            is TypeSignature.Reference.TypeVariable -> {
+                require(type.name !in visiting)
+                val parameter = requireNotNull(variables[type.name])
+                erase(parameter.classBound ?: parameter.interfaceBounds.first(), variables, visiting + type.name)
             }
-
-            return null
-        } else {
-            return a.zip(b) { a, b ->
-                val classBound = if (a.classBound != null && b.classBound != null) {
-                    intersectTypeSignatures(a.classBound, b.classBound)
-                } else {
-                    null
+            is TypeSignature.Reference.Class -> {
+                val segments = listOf(type.base) + type.innerClasses
+                segments.forEach { segment ->
+                    require(segment.name.isNotEmpty())
+                    segment.typeArguments.filterIsInstance<TypeArgument.Bounded>().forEach { argument ->
+                        require(argument.type is TypeSignature.Reference)
+                        checkReferences(argument.type, variables)
+                    }
                 }
-
-                val interfaceBounds = a.interfaceBounds.zip(b.interfaceBounds, ::intersectTypeSignatures).filterNotNull()
-
-                FormalTypeParameter(a.name, classBound, interfaceBounds)
+                "L" + segments.joinToString("$") { it.name } + ";"
             }
         }
+
+    // Checking references separately permits legal recursive bounds such as T : Comparable<T>.
+    private fun checkReferences(type: TypeSignature, variables: Map<String, FormalTypeParameter>) {
+        when (type) {
+            is TypeSignature.Reference.TypeVariable -> require(type.name in variables)
+            is TypeSignature.Reference.Array -> checkReferences(type.typeSignature, variables)
+            is TypeSignature.Reference.Class -> (listOf(type.base) + type.innerClasses).forEach { segment ->
+                segment.typeArguments.filterIsInstance<TypeArgument.Bounded>().forEach { checkReferences(it.type, variables) }
+            }
+            is TypeSignature.Primitive -> Unit
+        }
     }
 
-    private fun intersectClassSignatures(a: ClassSignature, b: ClassSignature): ClassSignature? {
-        val typeParameters = intersectTypeParameterLists(a.typeParameters, b.typeParameters) ?: return null
-
-        val superClass = intersectClassTypeSignatures(a.superClass, b.superClass)
-            ?: TypeSignature.Reference.Class(ClassNameSegment("java/lang/Object"))
-
-        val superInterfaces = a.superInterfaces.zip(b.superInterfaces, ::intersectClassTypeSignatures).filterNotNull()
-
-        return ClassSignature(typeParameters, superClass, superInterfaces)
-    }
-
-    private fun intersectMethodSignatures(a: MethodSignature, b: MethodSignature): MethodSignature? {
-        val typeParameters = intersectTypeParameterLists(a.typeParameters, b.typeParameters) ?: return null
-
-        val parameterTypes = a.parameterTypes.zip(b.parameterTypes) { a, b ->
-            intersectTypeSignatures(a, b) ?: return null
+    fun validClass(signature: String?, superName: String, interfaces: List<String>): String? =
+        signature?.takeIf {
+            runCatching {
+                val parsed = parseClassSignature(it)
+                require(write(parsed) == it)
+                val variables = scope(parsed.typeParameters, emptyMap())
+                require(erase(parsed.superClass, variables) == "L$superName;")
+                require(parsed.superInterfaces.map { type -> erase(type, variables) } == interfaces.map { name -> "L$name;" })
+            }.isSuccess
         }
 
-        val returnType = intersectTypeSignatures(a.returnType, b.returnType) ?: return null
-
-        val exceptionTypes = a.exceptionTypes.zip(b.exceptionTypes, ::intersectGenericTypeSignatures).filterNotNull()
-
-        return MethodSignature(typeParameters, parameterTypes, returnType, exceptionTypes)
-    }
-
-    fun intersectClassSignatures(a: String?, b: String?): String? {
-        if (a == null || b == null) {
-            return null
+    fun validMember(signature: String?, descriptor: String, classSignature: String?, method: Boolean): String? =
+        signature?.takeIf {
+            runCatching {
+                val outer = classSignature?.let { value -> scope(parseClassSignature(value).typeParameters, emptyMap()) } ?: emptyMap()
+                if (method) {
+                    val parsed = parseMethodSignature(it)
+                    require(write(parsed) == it)
+                    val variables = scope(parsed.typeParameters, outer)
+                    val parameters = parsed.parameterTypes.map { type -> erase(type, variables).also { value -> require(value != "V") } }
+                    require("(" + parameters.joinToString("") + ")" + erase(parsed.returnType, variables) == descriptor)
+                    parsed.exceptionTypes.forEach { type ->
+                        require(type !is TypeSignature.Reference.Array)
+                        erase(type, variables)
+                    }
+                } else {
+                    val parsed = parseTypeSignature(it)
+                    require(parsed is TypeSignature.Reference && write(parsed) == it)
+                    require(erase(parsed, outer) == descriptor)
+                }
+            }.isSuccess
         }
-
-        val a = parseClassSignature(a)
-        val b = parseClassSignature(b)
-
-        val signature = intersectClassSignatures(a, b) ?: return null
-
-        return write(signature)
-    }
-
-    fun intersectMethodSignature(a: String?, b: String?): String? {
-        if (a == null || b == null) {
-            return null
-        }
-
-        val a = parseMethodSignature(a)
-        val b = parseMethodSignature(b)
-
-        val signature = intersectMethodSignatures(a, b) ?: return null
-
-        return write(signature)
-    }
-
-    fun intersectFieldSignature(a: String?, b: String?): String? {
-        if (a == null || b == null) {
-            return null
-        }
-
-        val a = parseTypeSignature(a)
-        val b = parseTypeSignature(b)
-
-        val signature = intersectTypeSignatures(a, b) ?: return null
-
-        return write(signature)
-    }
 
     private fun write(signature: Signature): String {
         val writer = SignatureWriter()
-
         signature.accept(writer)
-
         return writer.toString()
     }
 }
