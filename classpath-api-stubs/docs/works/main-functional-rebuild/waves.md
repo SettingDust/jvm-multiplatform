@@ -2,7 +2,7 @@
 
 [Work](work.md) | [Context](context.md) | Selected [Plan](plan.md)
 
-This is the sole executable graph for the Plan's signed, preserved, documented local main rebuild. `I-preserve`, `I-base`, `I-inheritance` and `I-inheritance-docs` are completed Results; the five remaining code items, five matching docs items and final audit remain pending. Each item has exactly one Handler and one Result for one observable outcome. Code integration/verification and its subsequent documentation commit are separate items. No gate is an extra Handler or Result.
+This is the sole executable graph for the Plan's signed, preserved, documented local main rebuild. `I-preserve`, `I-base`, `I-inheritance`, `I-inheritance-docs`, `I-parameters` and `I-parameters-docs` are completed Results; the four remaining code items, four matching docs items and final audit remain pending. Each item has exactly one Handler and one Result for one observable outcome. Code integration/verification and its subsequent documentation commit are separate items. No gate is an extra Handler or Result.
 
 ## Release and conflict rules
 
@@ -26,7 +26,7 @@ All items conflict through shared Git/history/source ownership and, when used, G
 | W-plugin | I-plugin, I-plugin-docs | W-actual | Both Results completed: preserved real plugin/marker delta integrated and final classpath check passed, then matching signed docs and clean audit candidate. |
 | W-final | I-final | W-plugin | Independent final read-only audit demonstrates the complete Plan predicate, including versions, ancestry, signatures, preservation and clean state. |
 
-Every row requires all listed item Results to be completed and its stated release predicate verified. All nine gates establish Plan completion. Each item belongs to exactly one gate. Item prerequisites below are explicit; ordering in this document adds no dependency. `W-preserve` and `W-base` remain established by prior completed Results. `I-inheritance` and `I-inheritance-docs` are completed: the five-path docs-only commit `7a79d220a8114c275ff05536c4148963a78f4738` follows the code candidate, its tree is `7eee33fd8b18e8ee4d94997357451308db26ec7c`, and its signature passed `git verify-commit`; `W-inheritance` is released. No parameter or later item has run in this docs delivery. The original generation-1 compound attempt remains terminal `blocked` with no edits/tests/commits; the later code-signing block and successful unchanged-candidate retry are distinct historical events recorded in [Inheritance evidence](inheritance.md). All later gate predicates and item dependencies remain unchanged.
+Every row requires all listed item Results to be completed and its stated release predicate verified. All nine gates establish Plan completion. Each item belongs to exactly one gate. Item prerequisites below are explicit; ordering in this document adds no dependency. `W-preserve` and `W-base` remain established by prior completed Results. `I-inheritance` and `I-inheritance-docs` are completed: the five-path docs-only commit `7a79d220a8114c275ff05536c4148963a78f4738` follows the code candidate, its tree is `7eee33fd8b18e8ee4d94997357451308db26ec7c`, and its signature passed `git verify-commit`; `W-inheritance` is released. `I-parameters` and `I-parameters-docs` are also completed: the signed code candidate is `a2609ff0d901f077da7042fc1ac70625f4613e5d` with tree `07af1d2009dca9c44f1b2791dadb01783f709a6d`, parents `fd5be9ef6135ec3bef1f472b942957bd46f581b2` and `08e4239cdc1e2f84f6f645a3a0188b27443ff4c0`; its four-path code diff and historical test evidence are recorded in [Parameter evidence](parameters.md). The separate five-path signed docs-only commit created by this delivery follows that exact code candidate; `W-parameters` is released. No Worker or later item has run in this docs delivery. The original generation-1 compound attempt remains terminal `blocked` with no edits/tests/commits; the later code-signing block and successful unchanged-candidate retry are distinct historical events recorded in [Inheritance evidence](inheritance.md). All later gate predicates and item dependencies remain unchanged.
 
 ## Items
 
@@ -74,9 +74,11 @@ Every row requires all listed item Results to be completed and its stated releas
 - Ownership/effects: only `inheritance.md` and `work.md`, `context.md`, `plan.md`, `waves.md` in this Work; the separate signed documentation commit on main. All other writes conflict under the shared serial rule. No code/build/version changes or tests.
 - Steps/verification: apply the shared docs-candidate/evidence check. Record only inheritance behavior and its executed checks, toolchains, code/merge SHA/tree, accepted version, preserved Code/actual baseline and limitations in `inheritance.md`. Retain base docs; record this tuple as the in-progress Plan alongside the completed inheritance evidence, with parameters/worker/FIR/actual/plugin pending. Preserve historical content/provenance as evidence without restoring shared completion claims prematurely. Stage explicit owned docs only, check the docs-only diff, sign and verify the commit. Disclose the still-owned actual formatter diff and generated XML without staging them.
 - Completion predicate: one signed, verified docs-only commit after the exact completed inheritance code candidate truthfully records that evidence and the still-pending scope.
-- Required Result: consumed code Result/SHA/tree, docs path/diff and commit parent/SHA, signature check, evidence references, unchanged tested-input comparison and residual state. Together with `I-inheritance`, this satisfies `W-inheritance`; no parameter code result is implied.
+- Required Result: consumed code Result/SHA/tree, docs path/diff and commit parent/SHA, signature check, evidence references, unchanged tested-input comparison and residual state. Together with `I-inheritance`, this satisfies `W-inheritance`; it does not establish any Worker or later item.
 
 ### I-parameters — Signed and verified parameter code integration
+
+- Status: completed at signed merge `a2609ff0d901f077da7042fc1ac70625f4613e5d`, tree `07af1d2009dca9c44f1b2791dadb01783f709a6d`; parents are `fd5be9ef6135ec3bef1f472b942957bd46f581b2` and frozen source `08e4239cdc1e2f84f6f645a3a0188b27443ff4c0`. `git verify-commit` returned Good EDDSA. The code diff is limited to the four parameter paths, with the historical 25-test evidence and residual checks recorded in [Parameter evidence](parameters.md).
 
 - Prerequisites: I-inheritance-docs.
 - References: Context parameter tip; intersection Spec method-parameter contract; Code Spec.
@@ -88,6 +90,8 @@ Every row requires all listed item Results to be completed and its stated releas
 - Required Result: merge chain/parents, integrated main SHA/tree and tested-input mapping, allowed diff, commands/runtimes/exits/reports, unchanged classpath version, signed code SHAs and residual state. No matching docs commit is part of this Result.
 
 ### I-parameters-docs — Signed parameter evidence documentation
+
+- Status: completed by the separate signed docs-only commit created in this delivery after `a2609ff0d901f077da7042fc1ac70625f4613e5d`; only `context.md`, `parameters.md`, `plan.md`, `waves.md` and `work.md` are in its five-path scope. The commit records the unchanged code candidate, historical test evidence, accepted version, root/wrapper limitation and residual state. No build or test was rerun. `W-parameters` is released.
 
 - Prerequisites: I-parameters.
 - References: full completed `I-parameters` Result; inheritance code/docs evidence; Plan shared docs contract.
