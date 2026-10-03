@@ -1,0 +1,67 @@
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
+buildscript {
+    dependencies { classpath(files(file(providers.gradleProperty('clocheClasspath').get()).readLines())) }
+}
+apply plugin: 'org.jetbrains.kotlin.jvm'
+apply plugin: 'earth.terrarium.cloche'
+group = 'p4.fixture'
+version = '1'
+repositories {
+    mavenCentral()
+    gradlePluginPortal()
+    maven { url = 'https://maven.msrandom.net/repository/cloche/' }
+    maven { url = 'https://maven.fabricmc.net/' }
+    maven { url = 'https://maven.neoforged.net/releases' }
+}
+cloche {
+    metadata { modId = 'p4fixture' }
+    def parent = common('parent') {}
+    def child = common('child') { dependsOn(parent) }
+    common('downstream') { dependsOn(child) }
+}
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+def p4Compiler = configurations.dependencyScope('p4Compiler')
+def p4Annotations = configurations.dependencyScope('p4Annotations')
+dependencies {
+    add('p4Compiler', files(providers.gradleProperty('stubJar').get(), providers.gradleProperty('observerJar').get()))
+    add('p4Annotations', files(providers.gradleProperty('annotationsJar').get(), providers.gradleProperty('classAnnotationsJar').get()))
+}
+configurations.configureEach {
+    resolutionStrategy.eachDependency {
+        if (requested.group == 'org.jetbrains.kotlin') useVersion('2.2.20')
+    }
+    exclude group: 'net.msrandom', module: 'kmp-actual-stubs-compiler-plugin'
+    exclude group: 'net.msrandom', module: 'kmp-stub-annotations'
+    exclude group: 'net.msrandom', module: 'class-extension-annotations'
+    if (name.startsWith('kotlinCompilerPluginClasspath')) {
+        extendsFrom(p4Compiler.get())
+    }
+    if (name.toLowerCase().endsWith('compileclasspath')) {
+        extendsFrom(p4Annotations.get())
+    }
+}
+tasks.withType(KotlinCompile).configureEach {
+    compilerOptions.languageVersion.set(KotlinVersion.KOTLIN_2_1)
+    compilerOptions.apiVersion.set(KotlinVersion.KOTLIN_2_1)
+    compilerOptions.jvmTarget.set(JvmTarget.JVM_17)
+}
+apply from: 'observe.gradle'
+// Use the real API generator for the common-only graph, as in the accepted fixture.
+tasks.withType(net.msrandom.stubs.GenerateStubApi).configureEach { classpaths.set([[]]) }
+tasks.register('recordProduct') {
+    doLast {
+        println "P4_GRADLE=${gradle.gradleVersion} JVM=${System.getProperty('java.version')}"
+        [org.jetbrains.kotlin.gradle.plugin.KotlinPluginWrapper, earth.terrarium.cloche.ClochePlugin, net.msrandom.virtualsourcesets.JavaVirtualSourceSetsPlugin].each {
+            println "P4_LOADED ${it.name} ${it.protectionDomain.codeSource.location}"
+        }
+        configurations.kotlinCompilerClasspath.resolvedConfiguration.resolvedArtifacts.each {
+            println "P4_COMPILER ${it.moduleVersion.id} ${it.file}"
+        }
+    }
+}
