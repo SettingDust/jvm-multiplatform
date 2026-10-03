@@ -1,0 +1,35 @@
+import java.security.MessageDigest
+
+def kotlinCompileType = project.buildscript.classLoader.loadClass('org.jetbrains.kotlin.gradle.tasks.KotlinCompile')
+
+def generated = layout.buildDirectory.dir('generated/child')
+def generateActual = tasks.register('generateActual') {
+    def body = providers.gradleProperty('actualBody').orElse('73')
+    inputs.property('body', body)
+    outputs.dir(generated)
+    doLast {
+        def output = new File(generated.get().asFile, 'Generated.kt')
+        output.parentFile.mkdirs()
+        output.text = "package p1\nactual fun value(): Int = ${body.get()}\n"
+        println "P1_GENERATED ${output}"
+    }
+}
+kotlin.sourceSets.child.kotlin.srcDir(files(generated).builtBy(generateActual))
+kotlin.sourceSets.parent.kotlin.exclude('**/Excluded.kt')
+tasks.withType(kotlinCompileType).configureEach {
+    doFirst {
+        def label = project.findProperty('attempt') ?: 'default'
+        def evidence = file("../${label}-${name}-inputs.txt")
+        evidence.text = "task=${path}\nincremental=${incremental}\nstrategy=${compilerExecutionStrategy.get()}\nlanguage=${compilerOptions.languageVersion.get().version}\napi=${compilerOptions.apiVersion.get().version}\njvmTarget=${compilerOptions.jvmTarget.get().target}\nsources=${sources.files.sort()}\nargs=${compilerOptions.freeCompilerArgs.get()}\nplugins=${pluginClasspath.files.sort()}\n"
+        pluginClasspath.files.sort().each { jar ->
+            evidence << "plugin.sha256=${MessageDigest.getInstance('SHA-256').digest(jar.bytes).encodeHex()} ${jar}\n"
+        }
+        def snapshot = file("../${label}-${name}-sources")
+        snapshot.mkdirs()
+        sources.files.sort().eachWithIndex { source, index ->
+            evidence << "source.sha256=${MessageDigest.getInstance('SHA-256').digest(source.bytes).encodeHex()} ${source}\n"
+            new File(snapshot, "${index}-${source.name}").bytes = source.bytes
+        }
+        println "P1_INPUTS ${evidence}"
+    }
+}
