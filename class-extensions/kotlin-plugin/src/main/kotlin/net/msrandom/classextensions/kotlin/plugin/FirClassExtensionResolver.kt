@@ -24,7 +24,7 @@ import org.jetbrains.kotlin.fir.resolve.calls.FirCallResolver
 import org.jetbrains.kotlin.fir.resolve.providers.firProvider
 import org.jetbrains.kotlin.fir.resolve.transformers.FirImportResolveTransformer
 import org.jetbrains.kotlin.fir.resolve.transformers.FirSpecificTypeResolverTransformer
-import org.jetbrains.kotlin.fir.resolve.transformers.ScopeClassDeclaration
+import org.jetbrains.kotlin.fir.resolve.TypeResolutionConfiguration
 import org.jetbrains.kotlin.fir.resolve.transformers.body.resolve.FirAbstractBodyResolveTransformer.BodyResolveTransformerComponents
 import org.jetbrains.kotlin.fir.resolve.transformers.body.resolve.FirBodyResolveTransformer
 import org.jetbrains.kotlin.fir.resolve.typeResolver
@@ -129,7 +129,7 @@ internal fun <T : FirElement> convertAst(
     return method.invoke(builder, node) as T
 }
 
-internal class ClassExtensionContext(val info: ClassExtensionInfo, val scope: ScopeClassDeclaration)
+internal class ClassExtensionContext(val info: ClassExtensionInfo, val scope: TypeResolutionConfiguration)
 
 internal class FirClassExtensionResolver(
     private val session: FirSession,
@@ -161,7 +161,7 @@ internal class FirClassExtensionResolver(
         }.reversed()
 
         val typeRef = buildUserTypeRef {
-            source = getClassCall.argument.source
+            source = requireNotNull(getClassCall.argument.source) { "Class extension target has no source" }
 
             isMarkedNullable = false
 
@@ -181,7 +181,7 @@ internal class FirClassExtensionResolver(
             convertAst<FirImport>(it, builder, "convertImportDirective").transformSingle(importResolveTransformer, null)
         }
 
-        val scope = ScopeClassDeclaration(computeImportingScopes(session, firPackage, imports), emptyList())
+        val scope = TypeResolutionConfiguration(computeImportingScopes(session, firPackage, imports), emptyList(), useSiteFile = null)
 
         val typeResolution = session.typeResolver.resolveType(
             typeRef,
@@ -189,8 +189,7 @@ internal class FirClassExtensionResolver(
             true,
             false,
             true,
-            null,
-            SupertypeSupplier.Default,
+            supertypeSupplier = SupertypeSupplier.Default,
         )
 
         if (typeResolution.type.classId == expected.classId) {
@@ -200,7 +199,7 @@ internal class FirClassExtensionResolver(
         }
     }
 
-    internal fun resolveUserType(scope: ScopeClassDeclaration, userType: FirUserTypeRef): FirResolvedTypeRef {
+    internal fun resolveUserType(scope: TypeResolutionConfiguration, userType: FirUserTypeRef): FirResolvedTypeRef {
         val firSpecificTypeResolverTransformer = FirSpecificTypeResolverTransformer(session, expandTypeAliases = true)
 
         return userType.transform(firSpecificTypeResolverTransformer, scope)

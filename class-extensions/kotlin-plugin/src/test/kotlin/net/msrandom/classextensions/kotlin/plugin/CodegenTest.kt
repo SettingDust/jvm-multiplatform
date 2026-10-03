@@ -1,39 +1,79 @@
 package net.msrandom.classextensions.kotlin.plugin
 
+import net.msrandom.classextensions.ClassExtension
+import org.jetbrains.kotlin.cli.common.ExitCode
+import org.jetbrains.kotlin.cli.jvm.K2JVMCompiler
+import java.io.ByteArrayOutputStream
+import java.io.File
+import java.io.PrintStream
+import java.net.URLClassLoader
+import java.nio.file.Files
 import kotlin.test.Test
-import org.jetbrains.kotlin.cli.jvm.main as kotlinc
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 
 class CodegenTest {
     @Test
-    fun `Test Codegen`() {
-        val classpath = System.getProperty("java.class.path")
-        val annotations = "../annotations/build/libs/class-extension-annotations-1.0.0.jar"
-
-        val arguments = arrayOf(
-            "src/test/resources/test-common.kt",
-            "src/test/resources/test-platform.kt",
-
-
-            "-language-version", "2.0",
-
-
-            "-no-stdlib",
-
-            "-classpath",
-            "$classpath:$annotations",
-
-            "-Xcompiler-plugin=build/libs/class-extension-kotlin-plugin-1.0.8.jar",
-
-
-            "-Xmulti-platform",
-
-            "-Xfragments=main,platform",
-            "-Xfragment-refines=platform:main",
-
-            "-Xfragment-sources=main:src/test/resources/test-common.kt",
-            "-Xfragment-sources=platform:src/test/resources/test-platform.kt",
-        )
-
-        kotlinc(arguments)
+    fun `CLI loads plugin and executes generated members`() {
+        val output = Files.createTempDirectory("class-extension-consumer").toFile()
+        try {
+            val common = File("src/test/resources/test-common.kt").absolutePath
+            val platform = File("src/test/resources/test-platform.kt").absolutePath
+            val classpath =
+                listOf(ClassExtension::class.java, Unit::class.java).joinToString(File.pathSeparator) {
+                    File(
+                        it.protectionDomain.codeSource.location
+                            .toURI(),
+                    ).path
+                }
+            val plugin =
+                File(
+                    ClassExtensionsPlugin::class.java.protectionDomain.codeSource.location
+                        .toURI(),
+                )
+            val service =
+                requireNotNull(
+                    javaClass.classLoader.getResource(
+                        "META-INF/services/org.jetbrains.kotlin.compiler.plugin.CompilerPluginRegistrar",
+                    ),
+                )
+            val resources = File(service.toURI()).parentFile.parentFile.parentFile
+            val messages = ByteArrayOutputStream()
+            val exit =
+                K2JVMCompiler().exec(
+                    PrintStream(messages),
+                    common,
+                    platform,
+                    "-language-version",
+                    "2.2",
+                    "-no-stdlib",
+                    "-no-reflect",
+                    "-classpath",
+                    classpath,
+                    "-d",
+                    output.path,
+                    "-Xplugin=${plugin.path},${resources.path}",
+                    "-Xmulti-platform",
+                    "-Xfragments=main,platform",
+                    "-Xfragment-refines=platform:main",
+                    "-Xfragment-sources=main:$common",
+                    "-Xfragment-sources=platform:$platform",
+                )
+            assertEquals(ExitCode.OK, exit, messages.toString())
+            URLClassLoader(arrayOf(output.toURI().toURL()), javaClass.classLoader).use { loader ->
+                val target = loader.loadClass("a.b.c.A")
+                val instance = target.getConstructor().newInstance()
+                assertEquals(42, target.getMethod("injected").invoke(instance))
+                assertEquals("hi", loader.loadClass("a.b.c.I").getMethod("hi").invoke(instance))
+                assertEquals(42, loader.loadClass("a.b.c.Test_commonKt").getMethod("consume").invoke(null))
+                assertEquals(Int::class.javaPrimitiveType, target.getDeclaredField("c").type)
+                assertEquals(7, target.getMethod("getMutable").invoke(instance))
+                target.getMethod("setMutable", Int::class.javaPrimitiveType).invoke(instance, 9)
+                assertEquals(9, target.getMethod("getMutable").invoke(instance))
+            }
+            assertFalse(File(output, "a/b/c/AExtension.class").exists(), "Extension carrier must be removed by IR plugin")
+        } finally {
+            output.deleteRecursively()
+        }
     }
 }

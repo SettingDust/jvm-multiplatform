@@ -9,7 +9,7 @@ import org.jetbrains.kotlin.fir.declarations.FirConstructor
 import org.jetbrains.kotlin.fir.declarations.FirProperty
 import org.jetbrains.kotlin.fir.declarations.FirRegularClass
 import org.jetbrains.kotlin.fir.declarations.FirSimpleFunction
-import org.jetbrains.kotlin.fir.lightTree.LightTree2Fir
+import org.jetbrains.kotlin.parsing.KotlinLightParser
 import org.jetbrains.kotlin.modules.Module
 import org.jetbrains.kotlin.psi.stubs.elements.KtStubElementTypes
 import org.jetbrains.kotlin.util.getChildren
@@ -46,13 +46,13 @@ internal class CompiledExtensionInfo(
 class LazyExtensionFinder(private val module: Module, private val moduleStructure: HmppCliModuleStructure) {
     internal fun getAllExtensionClasses(): List<ClassExtensionInfo> {
         val extensionTrees = extensionSourceFiles().mapNotNull {
-            val code = Path(it).readText()
+            val code = Path(it).readText().replace("\r\n", "\n").replace('\r', '\n')
 
             if (ClassExtension::class.java.simpleName !in code) {
                 return@mapNotNull null
             }
 
-            LightTree2Fir.buildLightTree(code, null)
+            KotlinLightParser.buildLightTree(code, null, null)
         }
 
         return extensionTrees.flatMap {
@@ -184,7 +184,7 @@ class LazyExtensionFinder(private val module: Module, private val moduleStructur
 
     private fun extensionSourceFiles(): List<String> {
         // Modules that aren't on the bottom of the dependency graph are the relevant ones
-        val relevantModules = moduleStructure.modules - moduleStructure.dependenciesMap.values.flatten()
+        val relevantModules = moduleStructure.modules - moduleStructure.sourceDependencies.values.flatten()
 
         return relevantModules.flatMap {
             it.sources

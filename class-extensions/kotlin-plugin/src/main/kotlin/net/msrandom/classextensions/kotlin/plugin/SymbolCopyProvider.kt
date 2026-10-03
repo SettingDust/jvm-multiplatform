@@ -3,6 +3,7 @@ package net.msrandom.classextensions.kotlin.plugin
 import net.msrandom.classextensions.kotlin.plugin.copiers.copyConstructor
 import net.msrandom.classextensions.kotlin.plugin.copiers.copyProperty
 import net.msrandom.classextensions.kotlin.plugin.copiers.copySimpleFunction
+import org.jetbrains.kotlin.fir.declarations.DirectDeclarationsAccess
 import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
@@ -12,7 +13,8 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 
-@OptIn(SymbolInternals::class)
+// Inspect only source declarations here; generated scopes would re-enter this copier.
+@OptIn(SymbolInternals::class, DirectDeclarationsAccess::class)
 object SymbolCopyProvider {
     private val functionSymbols = hashMapOf<Pair<CallableId, List<FirValueParameterSymbol>>, FirNamedFunctionSymbol>()
     private val propertySymbols = hashMapOf<CallableId, FirPropertySymbol>()
@@ -35,8 +37,9 @@ object SymbolCopyProvider {
     }
 
     fun copyIfNeeded(symbol: FirPropertySymbol, ownerSymbol: FirClassSymbol<*>): FirPropertySymbol {
+        if (symbol.isLocal) return symbol
         val existing = ownerSymbol.declarationSymbols.filterIsInstance<FirPropertySymbol>().firstOrNull {
-            it.name == symbol.callableId.callableName
+            it.name == symbol.name
         }
 
         if (existing != null) {

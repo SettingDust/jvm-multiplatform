@@ -28,13 +28,18 @@ open class FirFunctionCopier(
     private val callableSymbol: FirCallableSymbol<*>,
     private val ownerSymbol: FirClassSymbol<*>,
 ) : FirTransformer<Unit>() {
+    private val originalClassId = requireNotNull(callableSymbol.callableId?.classId) {
+        "Only class members can be copied to ${ownerSymbol.classId}: $callableSymbol"
+    }
+
     internal fun ConeKotlinType.replaceType() =
-        replaceType(callableSymbol.callableId.classId!!, ownerSymbol.classId)
+        replaceType(originalClassId, ownerSymbol.classId)
 
     override fun transformThisReference(thisReference: FirThisReference, data: Unit): FirReference {
+        // Context/extension receiver symbols identify different receivers; retain them.
+        if ((thisReference.boundSymbol as? FirClassSymbol<*>)?.classId != originalClassId) return thisReference
         return buildImplicitThisReference {
             boundSymbol = ownerSymbol
-            contextReceiverNumber = thisReference.contextReceiverNumber
             diagnostic = thisReference.diagnostic
         }
     }
@@ -45,7 +50,7 @@ open class FirFunctionCopier(
     ): FirReference {
         val symbol = resolvedNamedReference.resolvedSymbol
 
-        if (symbol is FirCallableSymbol && symbol.callableId.classId == callableSymbol.callableId.classId) {
+        if (symbol is FirCallableSymbol && symbol.callableId?.classId == originalClassId) {
             // Needs second pass transformation, as it can refer to other transformed elements
             return super.transformNamedReference(buildResolvedNamedReference {
                 source = resolvedNamedReference.source
@@ -71,7 +76,6 @@ open class FirFunctionCopier(
         return super.transformThisReceiverExpression(buildThisReceiverExpression {
             coneTypeOrNull = thisReceiverExpression.coneTypeOrNull?.replaceType()
             annotations.addAll(thisReceiverExpression.annotations)
-            contextReceiverArguments.addAll(thisReceiverExpression.contextReceiverArguments)
             typeArguments.addAll(thisReceiverExpression.typeArguments)
             source = thisReceiverExpression.source
             nonFatalDiagnostics.addAll(thisReceiverExpression.nonFatalDiagnostics)
