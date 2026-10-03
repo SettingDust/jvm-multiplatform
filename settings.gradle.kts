@@ -2,10 +2,13 @@ enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
 rootProject.name = "jvm-multiplatform"
 
-fun includeSubproject(name: String, path: String) {
+fun includeSubproject(
+    name: String,
+    path: String,
+) {
     include(name)
 
-    project(":$name").projectDir = file(path)
+    project(":$name").projectDir = rootDir.toPath().resolve(path).toFile()
 }
 
 includeSubproject("jvm-virtual-source-sets-idea", "virtual-source-sets/idea-plugin")
