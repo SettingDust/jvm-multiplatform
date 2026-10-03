@@ -1,6 +1,5 @@
 package net.msrandom.stubs
 
-import org.gradle.testfixtures.ProjectBuilder
 import org.gradle.testkit.runner.GradleRunner
 import org.gradle.testkit.runner.TaskOutcome
 import org.junit.Test
@@ -17,7 +16,6 @@ import kotlin.test.*
 
 class InheritanceGenerationTest {
     private val root = Files.createTempDirectory("inheritance-generation-").toFile()
-    private val project by lazy { ProjectBuilder.builder().withProjectDir(root).build() }
 
     private fun bytes(
         bound: String = "java/lang/Object",
@@ -88,7 +86,7 @@ class InheritanceGenerationTest {
     ): File {
         val artifacts =
             inputs.map { input ->
-                listOf(project.objects.newInstance(GenerateStubApi.ResolvedArtifact::class.java).apply { file.set(input) })
+                listOf(StubGenerator.ArtifactSpec(input, null, null, null, null))
             }
         return File(root, name).also { StubGenerator.generateStub(artifacts, emptyList(), it.toPath()) }
     }
