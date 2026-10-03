@@ -9,23 +9,18 @@ class AExtension : I {
     @ExtensionShadow
     val a: Int = TODO()
 
-/*    @ExtensionInject
-    val b: Int
-        get() = a*/
-
     @ExtensionInject
     private var c = 5
 
-    @ExtensionShadow
-    fun toBeShadowed(): Unit = TODO()
+    @ExtensionInject
+    var mutable = 7
 
     @ExtensionInject
-    override fun hi() {
-        println("hi")
-    }
+    override fun hi(): String = "hi"
 
     @ExtensionInject
-    fun injected() {
-        println(5)
+    fun injected(): Int {
+        val local = 36
+        return a + c + local
     }
 }

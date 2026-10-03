@@ -21,7 +21,8 @@ import org.jetbrains.kotlin.fir.declarations.utils.visibility
 import org.jetbrains.kotlin.fir.expressions.FirStatement
 import org.jetbrains.kotlin.fir.expressions.UnresolvedExpressionTypeAccess
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
-import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirRegularPropertySymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirBackingFieldSymbol
 import org.jetbrains.kotlin.fir.types.ConeClassLikeType
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.classId
@@ -44,11 +45,13 @@ fun copyProperty(
     ownerSymbol: FirClassSymbol<*>,
     callableId: CallableId,
 ): FirProperty {
-    fun ConeKotlinType.replaceType() =
-        replaceType(original.symbol.callableId.classId!!, callableId.classId!!)
+    val originalClassId = requireNotNull(original.symbol.callableId?.classId) {
+        "Only member properties can be copied: ${original.name}"
+    }
+    fun ConeKotlinType.replaceType() = replaceType(originalClassId, ownerSymbol.classId)
 
     val propertyCopy = buildPropertyCopy(original) {
-        symbol = FirPropertySymbol(callableId)
+        symbol = FirRegularPropertySymbol(callableId)
         origin = Key.origin
         moduleData = ownerSymbol.moduleData
 
@@ -64,23 +67,14 @@ fun copyProperty(
                 origin = Key.origin
                 attributes = backingField.attributes
                 returnTypeRef = backingField.returnTypeRef
-                receiverParameter = backingField.receiverParameter
                 deprecationsProvider = backingField.deprecationsProvider
-                containerSource = backingField.containerSource
-                dispatchReceiverType = backingField.dispatchReceiverType?.replaceType()
-                contextReceivers.addAll(backingField.contextReceivers)
                 name = backingField.name
-                delegate = backingField.delegate
                 isVar = backingField.isVar
                 isVal = backingField.isVal
-                getter = backingField.getter
-                setter = backingField.setter
-                this.backingField = backingField.backingField
-                symbol = backingField.symbol
+                symbol = FirBackingFieldSymbol()
                 propertySymbol = propertyCopy.symbol
                 initializer = backingField.initializer
                 annotations.addAll(backingField.annotations)
-                typeParameters.addAll(backingField.typeParameters)
                 status = backingField.status
             }, data)
         }

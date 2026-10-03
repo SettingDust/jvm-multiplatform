@@ -30,7 +30,7 @@ class ClassExtensionFirDeclarations(session: FirSession, extensionFinder: LazyEx
 
         val firBuilderContext = Context<LighterASTNode>().apply {
             packageFqName = owner.classId.packageFqName
-            className = owner.classId.asSingleFqName()
+            className = owner.classId.relativeClassName
             dispatchReceiverTypesStack.push(owner.constructStarProjectedType())
         }
 

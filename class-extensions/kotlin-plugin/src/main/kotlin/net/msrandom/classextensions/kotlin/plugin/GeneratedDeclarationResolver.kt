@@ -1,13 +1,14 @@
 package net.msrandom.classextensions.kotlin.plugin
 
 import net.msrandom.classextensions.ExtensionInject
-import org.jetbrains.kotlin.descriptors.Modality
+import net.msrandom.classextensions.kotlin.plugin.copiers.buildConstructorCopy
 import org.jetbrains.kotlin.fir.FirElement
 import org.jetbrains.kotlin.fir.FirFunctionTarget
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.builder.FirAnnotationContainerBuilder
 import org.jetbrains.kotlin.fir.declarations.*
 import org.jetbrains.kotlin.fir.declarations.builder.*
+import org.jetbrains.kotlin.fir.declarations.impl.FirDefaultPropertyBackingField
 import org.jetbrains.kotlin.fir.declarations.impl.FirDefaultPropertyAccessor
 import org.jetbrains.kotlin.fir.declarations.impl.FirDefaultPropertyGetter
 import org.jetbrains.kotlin.fir.declarations.impl.FirDefaultPropertySetter
@@ -61,7 +62,7 @@ object GeneratedDeclarationResolver {
     }
 
     @Suppress("UNCHECKED_CAST")
-    @OptIn(SymbolInternals::class, UnresolvedExpressionTypeAccess::class, PrivateForInline::class)
+    @OptIn(SymbolInternals::class, UnresolvedExpressionTypeAccess::class, PrivateForInline::class, DirectDeclarationsAccess::class)
     internal fun <T : FirMemberDeclaration> resolve(owner: FirClassSymbol<*>, extension: ClassExtensionContext, element: T, session: FirSession): T {
         val scopeSession = ScopeSession()
 
@@ -76,6 +77,8 @@ object GeneratedDeclarationResolver {
 
         val transformed = element.transformSingle(
             object : FirDefaultTransformer<Nothing?>() {
+                private val propertyCopies = mutableMapOf<FirPropertySymbol, FirPropertySymbol>()
+
                 override fun <E : FirElement> transformElement(
                     element: E,
                     data: Nothing?
@@ -102,33 +105,9 @@ object GeneratedDeclarationResolver {
                     anonymousFunction: FirAnonymousFunction,
                     data: Nothing?
                 ): FirAnonymousFunction {
-                    val copy = buildAnonymousFunction {
+                    val copy = buildAnonymousFunctionCopy(anonymousFunction) {
                         origin = ClassExtensionFirDeclarations.Key.origin
                         symbol = FirAnonymousFunctionSymbol()
-
-                        source = anonymousFunction.source
-                        resolvePhase = anonymousFunction.resolvePhase
-                        annotations.addAll(anonymousFunction.annotations)
-                        moduleData = anonymousFunction.moduleData
-                        attributes = anonymousFunction.attributes
-                        status = anonymousFunction.status
-                        returnTypeRef = anonymousFunction.returnTypeRef
-                        receiverParameter = anonymousFunction.receiverParameter
-                        deprecationsProvider = anonymousFunction.deprecationsProvider
-                        containerSource = anonymousFunction.containerSource
-                        dispatchReceiverType = anonymousFunction.dispatchReceiverType
-                        contextReceivers.addAll(anonymousFunction.contextReceivers)
-                        controlFlowGraphReference = anonymousFunction.controlFlowGraphReference
-                        valueParameters.addAll(anonymousFunction.valueParameters)
-                        body = anonymousFunction.body
-                        contractDescription = anonymousFunction.contractDescription
-                        label = anonymousFunction.label
-                        invocationKind = anonymousFunction.invocationKind
-                        inlineStatus = anonymousFunction.inlineStatus
-                        isLambda = anonymousFunction.isLambda
-                        hasExplicitParameterList = anonymousFunction.hasExplicitParameterList
-                        typeParameters.addAll(anonymousFunction.typeParameters)
-                        typeRef = anonymousFunction.typeRef
                     }
 
                     replaceFunctionReturnTarget(anonymousFunction, copy)
@@ -180,31 +159,35 @@ object GeneratedDeclarationResolver {
                 }
 
                 override fun transformBackingField(backingField: FirBackingField, data: Nothing?): FirBackingField {
-                    val copy = buildBackingField {
+                    // Body resolve infers a default field's type from its property, not an initializer.
+                    val copy = if (backingField is FirDefaultPropertyBackingField) {
+                        FirDefaultPropertyBackingField(
+                            backingField.moduleData,
+                            ClassExtensionFirDeclarations.Key.origin,
+                            backingField.source,
+                            backingField.annotations.toMutableList(),
+                            backingField.returnTypeRef,
+                            backingField.isVar,
+                            propertyCopies[backingField.propertySymbol] ?: backingField.propertySymbol,
+                            backingField.status,
+                            backingField.resolvePhase,
+                        )
+                    } else buildBackingField {
                         origin = ClassExtensionFirDeclarations.Key.origin
-                        symbol = FirBackingFieldSymbol(backingField.symbol.callableId)
+                        symbol = FirBackingFieldSymbol()
 
                         source = backingField.source
                         resolvePhase = backingField.resolvePhase
                         moduleData = backingField.moduleData
                         attributes = backingField.attributes
                         returnTypeRef = backingField.returnTypeRef
-                        receiverParameter = backingField.receiverParameter
                         deprecationsProvider = backingField.deprecationsProvider
-                        containerSource = backingField.containerSource
-                        dispatchReceiverType = backingField.dispatchReceiverType
-                        contextReceivers.addAll(backingField.contextReceivers)
                         name = backingField.name
-                        delegate = backingField.delegate
                         isVar = backingField.isVar
                         isVal = backingField.isVal
-                        getter = backingField.getter
-                        setter = backingField.setter
-                        this.backingField = backingField.backingField
-                        propertySymbol = backingField.propertySymbol
+                        propertySymbol = propertyCopies[backingField.propertySymbol] ?: backingField.propertySymbol
                         initializer = backingField.initializer
                         annotations.addAll(backingField.annotations)
-                        typeParameters.addAll(backingField.typeParameters)
                         status = backingField.status
                     }
                     return super.transformBackingField(copy, data) as FirBackingField
@@ -250,11 +233,17 @@ object GeneratedDeclarationResolver {
                 override fun transformProperty(property: FirProperty, data: Nothing?): FirProperty {
                     val copy = buildPropertyCopy(property) {
                         origin = ClassExtensionFirDeclarations.Key.origin
-                        symbol = FirPropertySymbol(property.symbol.callableId)
+                        symbol = when (val originalSymbol = property.symbol) {
+                            is FirLocalPropertySymbol -> FirLocalPropertySymbol()
+                            is FirLocalPropertySymbolWithCallableId -> FirLocalPropertySymbolWithCallableId(originalSymbol.callableId)
+                            is FirRegularPropertySymbol -> FirRegularPropertySymbol(originalSymbol.callableId)
+                            else -> error("Unsupported source property symbol: $originalSymbol")
+                        }
 
                         removeExtensionInject()
                     }
 
+                    propertyCopies[property.symbol] = copy.symbol
                     return super.transformProperty(copy, data) as FirProperty
                 }
 
@@ -263,45 +252,38 @@ object GeneratedDeclarationResolver {
                     data: Nothing?
                 ): FirPropertyAccessor {
                     val copy = if (propertyAccessor is FirDefaultPropertyAccessor) {
+                        val propertySymbol = propertyCopies[propertyAccessor.propertySymbol] ?: propertyAccessor.propertySymbol
                         if (propertyAccessor.isGetter) {
                             FirDefaultPropertyGetter(
-                                propertyAccessor.source,
-                                propertyAccessor.moduleData,
-                                ClassExtensionFirDeclarations.Key.origin,
-                                propertyAccessor.returnTypeRef,
-                                propertyAccessor.visibility,
-                                propertyAccessor.propertySymbol,
-                                propertyAccessor.modality ?: Modality.FINAL,
-                                propertyAccessor.effectiveVisibility,
-                                propertyAccessor.isInline,
-                                propertyAccessor.isOverride,
-                                FirPropertyAccessorSymbol(),
-                                propertyAccessor.resolvePhase,
-                                propertyAccessor.attributes,
+                                source = propertyAccessor.source,
+                                moduleData = propertyAccessor.moduleData,
+                                origin = ClassExtensionFirDeclarations.Key.origin,
+                                propertyTypeRef = propertyAccessor.returnTypeRef,
+                                propertySymbol = propertySymbol,
+                                // Keep unresolved status unresolved until the status transformer runs.
+                                status = propertyAccessor.status,
+                                resolvePhase = propertyAccessor.resolvePhase,
+                                attributes = propertyAccessor.attributes,
                             )
                         } else {
                             FirDefaultPropertySetter(
-                                propertyAccessor.source,
-                                propertyAccessor.moduleData,
-                                ClassExtensionFirDeclarations.Key.origin,
-                                propertyAccessor.returnTypeRef,
-                                propertyAccessor.visibility,
-                                propertyAccessor.propertySymbol,
-                                propertyAccessor.modality ?: Modality.FINAL,
-                                propertyAccessor.effectiveVisibility,
-                                propertyAccessor.isInline,
-                                propertyAccessor.isOverride,
-                                FirPropertyAccessorSymbol(),
-                                propertyAccessor.valueParameters[0].source,
-                                propertyAccessor.valueParameters[0].annotations,
-                                propertyAccessor.resolvePhase,
-                                propertyAccessor.attributes,
+                                source = propertyAccessor.source,
+                                moduleData = propertyAccessor.moduleData,
+                                origin = ClassExtensionFirDeclarations.Key.origin,
+                                propertyTypeRef = propertyAccessor.valueParameters.single().returnTypeRef,
+                                propertySymbol = propertySymbol,
+                                status = propertyAccessor.status,
+                                parameterSource = propertyAccessor.valueParameters.single().source,
+                                parameterAnnotations = propertyAccessor.valueParameters.single().annotations,
+                                resolvePhase = propertyAccessor.resolvePhase,
+                                attributes = propertyAccessor.attributes,
                             )
                         }
                     } else {
                         buildPropertyAccessorCopy(propertyAccessor) {
                             origin = ClassExtensionFirDeclarations.Key.origin
                             symbol = FirPropertyAccessorSymbol()
+                            propertySymbol = propertyCopies[propertyAccessor.propertySymbol] ?: propertyAccessor.propertySymbol
                         }
                     }
 
@@ -353,7 +335,7 @@ object GeneratedDeclarationResolver {
                 override fun transformValueParameter(valueParameter: FirValueParameter, data: Nothing?): FirValueParameter {
                     val copy = buildValueParameterCopy(valueParameter) {
                         origin = ClassExtensionFirDeclarations.Key.origin
-                        symbol = FirValueParameterSymbol(valueParameter.symbol.name)
+                        symbol = FirValueParameterSymbol()
                     }
                     return super.transformValueParameter(copy, data) as FirValueParameter
                 }
@@ -362,7 +344,7 @@ object GeneratedDeclarationResolver {
         )
 
         transformed.transformSingle(
-            FirStatusResolveTransformer(session, scopeSession, StatusComputationSession()),
+            FirStatusResolveTransformer(StatusComputationSession(session, scopeSession)),
             null
         )
 
@@ -374,7 +356,7 @@ object GeneratedDeclarationResolver {
         ) {
             transformer.context.fileImportsScope += extension.scope.scopes
             transformer.context.addNonLocalTowerDataElements(extension.scope.scopes.map { it.asTowerDataElement(isLocal = false) })
-            transformer.context.addReceiver(null, ImplicitDispatchReceiverValue(owner, session, scopeSession))
+            transformer.context.addReceiver(null, ImplicitDispatchReceiverValue(owner, useSiteSession = session, scopeSession = scopeSession))
 
             transformer.context.withContainer(owner.fir) {
                 transformer.context.withContainingClass(owner.fir) {
