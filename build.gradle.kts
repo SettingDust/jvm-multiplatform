@@ -17,16 +17,18 @@ subprojects {
 
     configure<PublishingExtension> {
         repositories {
-            val isPluginClasspath = "annotation" !in project.name &&
+            val isPluginClasspath =
+                "annotation" !in project.name &&
                     "processor" !in project.name &&
                     project.path != rootProject.projects.kotlinClassExtensionsPlugin.path &&
                     project.path != rootProject.projects.kmpActualStubsCompilerPlugin.path
 
-            val repository = if (isPluginClasspath) {
-                "cloche"
-            } else {
-                "root"
-            }
+            val repository =
+                if (isPluginClasspath) {
+                    "cloche"
+                } else {
+                    "root"
+                }
 
             maven("https://maven.msrandom.net/repository/$repository/") {
                 credentials {
