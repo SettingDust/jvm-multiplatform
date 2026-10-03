@@ -18,7 +18,7 @@ internal object CommonSuperClassFinder {
                     chain.add(name)
                     break
                 }
-                val parent = classpaths[index].entry("$name.class")
+                val parent = classpaths[index].header("$name.class")
                 if (parent == null) {
                     chain.clear()
                     break

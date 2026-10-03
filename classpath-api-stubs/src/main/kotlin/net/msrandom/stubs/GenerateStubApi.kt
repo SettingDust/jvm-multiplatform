@@ -18,7 +18,12 @@ import org.gradle.api.tasks.OutputDirectory
 import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
+import org.gradle.workers.WorkAction
+import org.gradle.workers.WorkParameters
+import org.gradle.workers.WorkerExecutor
+import java.io.File
 import java.nio.file.StandardCopyOption
+import javax.inject.Inject
 import kotlin.io.path.ExperimentalPathApi
 import kotlin.io.path.copyTo
 import kotlin.io.path.createDirectories
@@ -41,6 +46,9 @@ abstract class GenerateStubApi : DefaultTask() {
     abstract val outputDirectory: DirectoryProperty
         @OutputDirectory get
 
+    @get:Inject
+    abstract val workerExecutor: WorkerExecutor
+
     init {
         preserveMethodBodies.convention(false)
         apiFileName.convention("api-stub.jar")
@@ -49,24 +57,91 @@ abstract class GenerateStubApi : DefaultTask() {
 
     @TaskAction
     fun generateStub() {
-        val outputDirectory = outputDirectory.asFile.get().toPath()
+        @OptIn(ExperimentalPathApi::class)
+        outputDirectory.asFile
+            .get()
+            .toPath()
+            .deleteRecursively()
+
+        val artifacts = classpaths.get().flatten()
+        workerExecutor.noIsolation().submit(GenerateStubWorkAction::class.java) {
+            classpathFiles.set(
+                artifacts.map {
+                    it.file.asFile
+                        .get()
+                        .absolutePath
+                },
+            )
+            classpathSizes.set(classpaths.get().map { it.size })
+            componentIds.set(artifacts.map { it.componentId.orNull ?: "" })
+            types.set(artifacts.map { it.type.orNull?.name ?: "" })
+            moduleIds.set(artifacts.map { it.moduleId.orNull?.toString() ?: "" })
+            moduleVersions.set(artifacts.map { it.moduleVersion.orNull ?: "" })
+            excludes.set(this@GenerateStubApi.excludes.get())
+            outputDirectory.set(
+                this@GenerateStubApi
+                    .outputDirectory.asFile
+                    .get()
+                    .absolutePath,
+            )
+            apiFileName.set(this@GenerateStubApi.apiFileName.get())
+            preserveMethodBodies.set(this@GenerateStubApi.preserveMethodBodies.get())
+        }
+    }
+
+    abstract class GenerateStubWorkAction : WorkAction<GenerateStubWorkAction.Parameters> {
+        interface Parameters : WorkParameters {
+            val classpathFiles: ListProperty<String>
+            val classpathSizes: ListProperty<Int>
+            val componentIds: ListProperty<String>
+            val types: ListProperty<String>
+            val moduleIds: ListProperty<String>
+            val moduleVersions: ListProperty<String>
+            val excludes: ListProperty<String>
+            val outputDirectory: Property<String>
+            val apiFileName: Property<String>
+            val preserveMethodBodies: Property<Boolean>
+        }
 
         @OptIn(ExperimentalPathApi::class)
-        outputDirectory.deleteRecursively()
-        outputDirectory.createDirectories()
-
-        val apiFile = outputDirectory.resolve(apiFileName.get())
-
-        val extras = StubGenerator.generateStub(classpaths.get(), excludes.get(), apiFile, preserveMethodBodies.get())
-
-        for (artifact in extras) {
-            val directory = outputDirectory.resolve(artifact.componentId.get().replace(':', '_'))
-
+        override fun execute() {
+            val files = parameters.classpathFiles.get().map(::File)
+            val componentIds = parameters.componentIds.get()
+            val types = parameters.types.get()
+            val moduleIds = parameters.moduleIds.get()
+            val moduleVersions = parameters.moduleVersions.get()
+            val artifacts =
+                files.indices.map { index ->
+                    StubGenerator.ArtifactSpec(
+                        file = files[index],
+                        componentId = componentIds[index].ifEmpty { null },
+                        type = types[index].takeUnless(String::isEmpty)?.let(GenerateStubApi.ResolvedArtifact.Type::valueOf),
+                        moduleId = moduleIds[index].ifEmpty { null },
+                        moduleVersion = moduleVersions[index].ifEmpty { null },
+                    )
+                }
+            val groups = artifacts.chunkedBySizes(parameters.classpathSizes.get())
+            val directory = File(parameters.outputDirectory.get()).toPath()
+            @OptIn(ExperimentalPathApi::class)
+            directory.deleteRecursively()
             directory.createDirectories()
-
-            val path = artifact.file.asFile.get()
-
-            path.toPath().copyTo(directory.resolve(path.name), StandardCopyOption.REPLACE_EXISTING)
+            try {
+                val extras =
+                    StubGenerator.generateStub(
+                        groups,
+                        parameters.excludes.get(),
+                        directory.resolve(parameters.apiFileName.get()),
+                        parameters.preserveMethodBodies.get(),
+                    )
+                for (artifact in extras) {
+                    val target = directory.resolve(artifact.componentId!!.replace(':', '_'))
+                    target.createDirectories()
+                    artifact.file.toPath().copyTo(target.resolve(artifact.file.name), StandardCopyOption.REPLACE_EXISTING)
+                }
+            } catch (error: Throwable) {
+                directory.deleteRecursively()
+                throw error
+            }
         }
     }
 
@@ -117,5 +192,12 @@ abstract class GenerateStubApi : DefaultTask() {
             Module,
             Project,
         }
+    }
+}
+
+private fun <T> List<T>.chunkedBySizes(sizes: List<Int>): List<List<T>> {
+    var offset = 0
+    return sizes.map { size ->
+        subList(offset, offset + size).also { offset += size }
     }
 }
