@@ -18,9 +18,10 @@ object ClassNodeIntersector {
             return null
         }
 
-        val matchingAnnotations = annotationsA.filter { annotation ->
-            annotationsB.any { it.desc == annotation.desc }
-        }
+        val matchingAnnotations =
+            annotationsA.filter { annotation ->
+                annotationsB.any { it.desc == annotation.desc }
+            }
 
         return matchingAnnotations
     }
@@ -44,9 +45,10 @@ object ClassNodeIntersector {
 
         node.innerClasses =
             nodeA.innerClasses.mapNotNull { innerClass ->
-                val inner = nodeB.innerClasses.firstOrNull {
-                    it.name == innerClass.name
-                }
+                val inner =
+                    nodeB.innerClasses.firstOrNull {
+                        it.name == innerClass.name
+                    }
 
                 if (inner == null) {
                     null
@@ -95,13 +97,17 @@ object ClassNodeIntersector {
                     val invisibleAnnotations =
                         intersectAnnotations(methodA.invisibleAnnotations, methodB.invisibleAnnotations)
 
-                    val method = MethodNode(
-                        access,
-                        methodB.name,
-                        methodB.desc,
-                        signature,
-                        methodB.exceptions.toTypedArray().intersect(methodA.exceptions.toSet()).toTypedArray(),
-                    )
+                    val method =
+                        MethodNode(
+                            access,
+                            methodB.name,
+                            methodB.desc,
+                            signature,
+                            methodB.exceptions
+                                .toTypedArray()
+                                .intersect(methodA.exceptions.toSet())
+                                .toTypedArray(),
+                        )
 
                     method.visibleAnnotations = visibleAnnotations
                     method.invisibleAnnotations = invisibleAnnotations

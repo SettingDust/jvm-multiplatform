@@ -106,6 +106,7 @@ abstract class GenerateStubApi : DefaultTask() {
                     moduleId.set(component.moduleIdentifier)
                     moduleVersion.set(component.version)
                 }
+
                 is ProjectComponentIdentifier -> {
                     type.set(Type.Project)
                 }

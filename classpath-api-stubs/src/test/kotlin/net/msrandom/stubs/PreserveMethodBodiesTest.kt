@@ -201,7 +201,10 @@ class PreserveMethodBodiesTest {
         assertTrue(common.instructions.any { it is org.objectweb.asm.tree.FrameNode })
         assertEquals("local1", common.localVariables.single().name)
         val bodyless = methods(directory, "defaultOff")
-        assertEquals(bodyless.map { Triple(it.name, it.desc, it.access) }, methods(directory, "pair").map { Triple(it.name, it.desc, it.access) })
+        assertEquals(
+            bodyless.map { Triple(it.name, it.desc, it.access) },
+            methods(directory, "pair").map { Triple(it.name, it.desc, it.access) },
+        )
         val unchanged = run(directory, *tasks)
         for (task in tasks) assertEquals(TaskOutcome.UP_TO_DATE, unchanged.task(":$task")!!.outcome, task)
         val toggle = run(directory, "toggle", "-Ppreserve=true")
