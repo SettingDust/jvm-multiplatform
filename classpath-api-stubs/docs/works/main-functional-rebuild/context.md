@@ -4,7 +4,7 @@
 
 ## Accepted boundary
 
-The current Handoff resolves the prior research's open own-version suggestion: retain existing own numbers, append the frozen upstream component, and change only the three modules listed below. Reset and ordered merges are explicitly authorized. No push, tags, remote publication, publication-pipeline recreation, new method declaration type-annotation implementation, unrelated module changes, or authoritative PRD/ADR/Spec edits are included.
+The original rebuild Handoff resolved the prior research's open own-version suggestion by retaining existing own numbers and appending the frozen upstream component for only the three modules listed below. Reset and ordered merges were explicitly authorized for that historical rebuild. The independent fork mapping below supersedes its version choice for current configuration. No push, tags, remote publication, publication-pipeline recreation, new method declaration type-annotation implementation, unrelated module changes, or authoritative PRD/ADR/Spec edits are included.
 
 The publication rollback has already removed 15 new files. They are not inputs or missing authority to recreate. The root build's retained diff was formatting only and is now part of base maintenance. The classpath plugin marker regression uses a local fixture repository and is retained functionality, not the canceled publication pipeline.
 
@@ -135,7 +135,19 @@ Final tracked/index diffs must be empty while the original 18 XML remain untrack
 
 The 18 `.intellijPlatform/localPlatformArtifacts/*.xml` files are unrelated generated files: retain on disk byte-for-byte, never stage or delete. The selected docs Handoff forbids adding exclusions or changing ignores; disclose the exact residuals instead of manufacturing literal clean porcelain.
 
-## Accepted versions
+## Current independent fork versions
+
+Signed version-only maintenance `80241311b51042ec69dc2f41d3c6d8b6f1255aab`, directly after historical main audit `50e2fe01a66c5f22e1cb498e916c49b72d6e03ec`, sets the current configuration:
+
+| Owning properties | Current value |
+| --- | --- |
+| `classpath-api-stubs/gradle.properties` | `0.1.0+terrarium.0.1.12` |
+| `class-extensions/kotlin-plugin/gradle.properties` | `0.1.0+terrarium.1.0.11` |
+| `kmp-actual-stubs/compiler-plugin/gradle.properties` | `0.1.0+terrarium.0.1.2` |
+
+Each module independently maintains the SemVer prefix before `+`; the shared starting prefix does not require synchronized increments. The `+terrarium.*` build metadata binds each module to its version at frozen upstream `cc193b68ffb42d4bcdce6c8cecc0f2b9a135ccb6`. Maintenance verified only the static exact mapping and frozen upstream suffixes; no new build, P4 or marker runtime testing was performed. Historical acceptance, old GAV/JAR identities, hashes, tests and applied commits remain tied to the original versions, including the main audit at `50e2fe01`; they do not establish runtime acceptance of the new coordinates.
+
+## Accepted versions (historical rebuild checkpoint)
 
 | Owning properties | Final value | Applied by |
 | --- | --- | --- |
