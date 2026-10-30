@@ -9,3 +9,16 @@ interface I {
 }
 
 fun consume(): Int = A<Int>().injected()
+
+open class ImportedTarget {
+    val seed: Int = 10
+    var state: Int = 3
+}
+
+class PackageTarget
+
+interface Added {
+    fun added(): Int
+}
+
+fun consumeAdded(): Int = ImportedTarget().added()

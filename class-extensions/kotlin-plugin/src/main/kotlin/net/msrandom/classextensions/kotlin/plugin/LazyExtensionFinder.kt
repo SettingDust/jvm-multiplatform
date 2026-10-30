@@ -6,11 +6,11 @@ import org.jetbrains.kotlin.com.intellij.lang.LighterASTNode
 import org.jetbrains.kotlin.com.intellij.util.diff.FlyweightCapableTreeStructure
 import org.jetbrains.kotlin.config.HmppCliModuleStructure
 import org.jetbrains.kotlin.fir.declarations.FirConstructor
+import org.jetbrains.kotlin.fir.declarations.FirNamedFunction
 import org.jetbrains.kotlin.fir.declarations.FirProperty
 import org.jetbrains.kotlin.fir.declarations.FirRegularClass
-import org.jetbrains.kotlin.fir.declarations.FirSimpleFunction
-import org.jetbrains.kotlin.parsing.KotlinLightParser
 import org.jetbrains.kotlin.modules.Module
+import org.jetbrains.kotlin.parsing.KotlinLightParser
 import org.jetbrains.kotlin.psi.stubs.elements.KtStubElementTypes
 import org.jetbrains.kotlin.util.getChildren
 import kotlin.io.path.Path
@@ -31,7 +31,7 @@ internal class ClassExtensionInfo(
 
 internal class CompiledExtensionInfo(
     val context: ClassExtensionContext,
-    val functions: List<FirSimpleFunction>,
+    val functions: List<FirNamedFunction>,
     val properties: List<FirProperty>,
     val constructors: List<FirConstructor>,
     val nestedClassifiers: List<FirRegularClass>,
@@ -43,17 +43,21 @@ internal class CompiledExtensionInfo(
  *  - and prevent them from getting recompiled later
  *   - this probably involves removing them entirely from the files
  */
-class LazyExtensionFinder(private val module: Module, private val moduleStructure: HmppCliModuleStructure) {
+class LazyExtensionFinder(
+    private val module: Module,
+    private val moduleStructure: HmppCliModuleStructure,
+) {
     internal fun getAllExtensionClasses(): List<ClassExtensionInfo> {
-        val extensionTrees = extensionSourceFiles().mapNotNull {
-            val code = Path(it).readText().replace("\r\n", "\n").replace('\r', '\n')
+        val extensionTrees =
+            extensionSourceFiles().mapNotNull {
+                val code = Path(it).readText().replace("\r\n", "\n").replace('\r', '\n')
 
-            if (ClassExtension::class.java.simpleName !in code) {
-                return@mapNotNull null
+                if (ClassExtension::class.java.simpleName !in code) {
+                    return@mapNotNull null
+                }
+
+                KotlinLightParser.buildLightTree(code, null, null)
             }
-
-            KotlinLightParser.buildLightTree(code, null, null)
-        }
 
         return extensionTrees.flatMap {
             getExtensionClasses(it)
@@ -79,7 +83,10 @@ class LazyExtensionFinder(private val module: Module, private val moduleStructur
         }
     }
 
-    fun isInject(node: LighterASTNode, tree: FlyweightCapableTreeStructure<LighterASTNode>): Boolean {
+    fun isInject(
+        node: LighterASTNode,
+        tree: FlyweightCapableTreeStructure<LighterASTNode>,
+    ): Boolean {
         val modifiers =
             node.getChildren(tree).firstOrNull { it.tokenType == KtStubElementTypes.MODIFIER_LIST }?.getChildren(tree)
                 ?: emptyList()
@@ -92,11 +99,12 @@ class LazyExtensionFinder(private val module: Module, private val moduleStructur
 
         val packageDirective = fileChildren.firstOrNull { it.tokenType == KtStubElementTypes.PACKAGE_DIRECTIVE }
 
-        val imports = fileChildren
-            .firstOrNull { it.tokenType == KtStubElementTypes.IMPORT_LIST }
-            ?.getChildren(tree)
-            ?.filter { it.tokenType == KtStubElementTypes.IMPORT_DIRECTIVE }
-            ?: emptyList()
+        val imports =
+            fileChildren
+                .firstOrNull { it.tokenType == KtStubElementTypes.IMPORT_LIST }
+                ?.getChildren(tree)
+                ?.filter { it.tokenType == KtStubElementTypes.IMPORT_DIRECTIVE }
+                ?: emptyList()
 
         return fileChildren.mapNotNull {
             if (it.tokenType == KtStubElementTypes.CLASS) {
@@ -118,10 +126,11 @@ class LazyExtensionFinder(private val module: Module, private val moduleStructur
         val primaryConstructor =
             nodeChildren.filter { it.tokenType == KtStubElementTypes.PRIMARY_CONSTRUCTOR && isInject(it, tree) }
 
-        val modifiers = nodeChildren
-            .firstOrNull { it.tokenType == KtStubElementTypes.MODIFIER_LIST }
-            ?.getChildren(tree)
-            ?: return null
+        val modifiers =
+            nodeChildren
+                .firstOrNull { it.tokenType == KtStubElementTypes.MODIFIER_LIST }
+                ?.getChildren(tree)
+                ?: return null
 
         val declarations =
             nodeChildren.firstOrNull { it.tokenType == KtStubElementTypes.CLASS_BODY }?.getChildren(tree) ?: emptyList()
@@ -146,7 +155,11 @@ class LazyExtensionFinder(private val module: Module, private val moduleStructur
         val targetArgument =
             argumentList.getChildren(tree).firstOrNull { it.tokenType == KtStubElementTypes.VALUE_ARGUMENT }
 
-        val targetClassExpression = targetArgument?.getChildren(tree)?.firstOrNull { it.tokenType == KtStubElementTypes.CLASS_LITERAL_EXPRESSION }
+        val targetClassExpression =
+            targetArgument?.getChildren(tree)?.firstOrNull {
+                it.tokenType ==
+                    KtStubElementTypes.CLASS_LITERAL_EXPRESSION
+            }
 
         if (targetClassExpression == null) {
             throw IllegalArgumentException("@ClassExtension requires a type argument for the class to extend")
@@ -154,30 +167,26 @@ class LazyExtensionFinder(private val module: Module, private val moduleStructur
 
         return ClassExtensionInfo(
             tree,
-
             packageDirective,
             imports,
-
             targetClassExpression,
-
             modifiers.filter { it != extensionAnnotation },
             superList.filter { it.tokenType == KtStubElementTypes.SUPER_TYPE_ENTRY },
-
             declarations.filter { it.tokenType == KtStubElementTypes.FUNCTION && isInject(it, tree) },
             declarations.filter { it.tokenType == KtStubElementTypes.PROPERTY && isInject(it, tree) },
-
             declarations.filter {
-                it.tokenType == KtStubElementTypes.SECONDARY_CONSTRUCTOR && isInject(
-                    it,
-                    tree
-                )
+                it.tokenType == KtStubElementTypes.SECONDARY_CONSTRUCTOR &&
+                    isInject(
+                        it,
+                        tree,
+                    )
             } + primaryConstructor,
-
             declarations.filter {
-                it.tokenType == KtStubElementTypes.OBJECT_DECLARATION || it.tokenType == KtStubElementTypes.CLASS && isInject(
-                    it,
-                    tree
-                )
+                it.tokenType == KtStubElementTypes.OBJECT_DECLARATION || it.tokenType == KtStubElementTypes.CLASS &&
+                    isInject(
+                        it,
+                        tree,
+                    )
             },
         )
     }
@@ -186,10 +195,11 @@ class LazyExtensionFinder(private val module: Module, private val moduleStructur
         // Modules that aren't on the bottom of the dependency graph are the relevant ones
         val relevantModules = moduleStructure.modules - moduleStructure.sourceDependencies.values.flatten()
 
-        return relevantModules.flatMap {
-            it.sources
-        }.filter {
-            it in module.getSourceFiles()
-        }
+        return relevantModules
+            .flatMap {
+                it.sources
+            }.filter {
+                it in module.getSourceFiles()
+            }
     }
 }

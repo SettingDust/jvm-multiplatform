@@ -148,7 +148,7 @@ internal class FirClassExtensionResolver(
             session,
             extension.treeStructure,
             builder
-        ).convertExpression(extension.targetTypeName, "") as FirGetClassCall
+        ).getAsFirStatement(extension.targetTypeName, "") as FirGetClassCall
 
         val qualifiers = buildList {
             var propertyAccess: FirPropertyAccessExpression? = getClassCall.argument as FirPropertyAccessExpression

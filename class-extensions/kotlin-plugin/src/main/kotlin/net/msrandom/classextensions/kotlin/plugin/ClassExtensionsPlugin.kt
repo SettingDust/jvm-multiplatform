@@ -27,6 +27,8 @@ class ClassExtensionsFirExtensionRegistrar(private val extensionFinder: LazyExte
 @OptIn(ExperimentalCompilerApi::class)
 @AutoService(CompilerPluginRegistrar::class)
 class ClassExtensionsPlugin : CompilerPluginRegistrar() {
+    override val pluginId: String = "net.msrandom.class-extensions"
+
     override val supportsK2: Boolean
         get() = true
 

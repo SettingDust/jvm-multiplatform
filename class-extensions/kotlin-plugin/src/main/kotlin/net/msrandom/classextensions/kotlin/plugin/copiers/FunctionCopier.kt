@@ -3,8 +3,8 @@ package net.msrandom.classextensions.kotlin.plugin.copiers
 import net.msrandom.classextensions.kotlin.plugin.ClassExtensionFirDeclarations.Key
 import net.msrandom.classextensions.kotlin.plugin.SymbolCopyProvider
 import org.jetbrains.kotlin.fir.FirElement
-import org.jetbrains.kotlin.fir.declarations.FirSimpleFunction
-import org.jetbrains.kotlin.fir.declarations.builder.buildSimpleFunctionCopy
+import org.jetbrains.kotlin.fir.declarations.FirNamedFunction
+import org.jetbrains.kotlin.fir.declarations.builder.buildNamedFunctionCopy
 import org.jetbrains.kotlin.fir.declarations.origin
 import org.jetbrains.kotlin.fir.expressions.FirStatement
 import org.jetbrains.kotlin.fir.expressions.FirThisReceiverExpression
@@ -28,14 +28,17 @@ open class FirFunctionCopier(
     private val callableSymbol: FirCallableSymbol<*>,
     private val ownerSymbol: FirClassSymbol<*>,
 ) : FirTransformer<Unit>() {
-    private val originalClassId = requireNotNull(callableSymbol.callableId?.classId) {
-        "Only class members can be copied to ${ownerSymbol.classId}: $callableSymbol"
-    }
+    private val originalClassId =
+        requireNotNull(callableSymbol.callableId?.classId) {
+            "Only class members can be copied to ${ownerSymbol.classId}: $callableSymbol"
+        }
 
-    internal fun ConeKotlinType.replaceType() =
-        replaceType(originalClassId, ownerSymbol.classId)
+    internal fun ConeKotlinType.replaceType() = replaceType(originalClassId, ownerSymbol.classId)
 
-    override fun transformThisReference(thisReference: FirThisReference, data: Unit): FirReference {
+    override fun transformThisReference(
+        thisReference: FirThisReference,
+        data: Unit,
+    ): FirReference {
         // Context/extension receiver symbols identify different receivers; retain them.
         if ((thisReference.boundSymbol as? FirClassSymbol<*>)?.classId != originalClassId) return thisReference
         return buildImplicitThisReference {
@@ -52,17 +55,21 @@ open class FirFunctionCopier(
 
         if (symbol is FirCallableSymbol && symbol.callableId?.classId == originalClassId) {
             // Needs second pass transformation, as it can refer to other transformed elements
-            return super.transformNamedReference(buildResolvedNamedReference {
-                source = resolvedNamedReference.source
-                name = resolvedNamedReference.name
+            return super.transformNamedReference(
+                buildResolvedNamedReference {
+                    source = resolvedNamedReference.source
+                    name = resolvedNamedReference.name
 
-                resolvedSymbol = when (val symbol = resolvedNamedReference.resolvedSymbol) {
-                    is FirNamedFunctionSymbol -> SymbolCopyProvider.copyIfNeeded(symbol, ownerSymbol)
-                    is FirPropertySymbol -> SymbolCopyProvider.copyIfNeeded(symbol, ownerSymbol)
-                    is FirConstructorSymbol -> SymbolCopyProvider.copyIfNeeded(symbol, ownerSymbol)
-                    else -> resolvedNamedReference.resolvedSymbol
-                }
-            }, data)
+                    resolvedSymbol =
+                        when (val symbol = resolvedNamedReference.resolvedSymbol) {
+                            is FirNamedFunctionSymbol -> SymbolCopyProvider.copyIfNeeded(symbol, ownerSymbol)
+                            is FirPropertySymbol -> SymbolCopyProvider.copyIfNeeded(symbol, ownerSymbol)
+                            is FirConstructorSymbol -> SymbolCopyProvider.copyIfNeeded(symbol, ownerSymbol)
+                            else -> resolvedNamedReference.resolvedSymbol
+                        }
+                },
+                data,
+            )
         }
 
         return super.transformResolvedNamedReference(resolvedNamedReference, data)
@@ -71,41 +78,45 @@ open class FirFunctionCopier(
     @OptIn(UnresolvedExpressionTypeAccess::class)
     override fun transformThisReceiverExpression(
         thisReceiverExpression: FirThisReceiverExpression,
-        data: Unit
-    ): FirStatement {
-        return super.transformThisReceiverExpression(buildThisReceiverExpression {
-            coneTypeOrNull = thisReceiverExpression.coneTypeOrNull?.replaceType()
-            annotations.addAll(thisReceiverExpression.annotations)
-            typeArguments.addAll(thisReceiverExpression.typeArguments)
-            source = thisReceiverExpression.source
-            nonFatalDiagnostics.addAll(thisReceiverExpression.nonFatalDiagnostics)
-            calleeReference = thisReceiverExpression.calleeReference
-            isImplicit = thisReceiverExpression.isImplicit
-        }, data)
-    }
+        data: Unit,
+    ): FirStatement =
+        super.transformThisReceiverExpression(
+            buildThisReceiverExpression {
+                coneTypeOrNull = thisReceiverExpression.coneTypeOrNull?.replaceType()
+                annotations.addAll(thisReceiverExpression.annotations)
+                typeArguments.addAll(thisReceiverExpression.typeArguments)
+                source = thisReceiverExpression.source
+                nonFatalDiagnostics.addAll(thisReceiverExpression.nonFatalDiagnostics)
+                calleeReference = thisReceiverExpression.calleeReference
+                isImplicit = thisReceiverExpression.isImplicit
+            },
+            data,
+        )
 
-    override fun <E : FirElement> transformElement(element: E, data: Unit): E {
-        return element.transformChildren(this, Unit) as E
-    }
+    override fun <E : FirElement> transformElement(
+        element: E,
+        data: Unit,
+    ): E = element.transformChildren(this, Unit) as E
 }
 
 @OptIn(UnresolvedExpressionTypeAccess::class)
 fun copySimpleFunction(
-    original: FirSimpleFunction,
+    original: FirNamedFunction,
     ownerSymbol: FirClassSymbol<*>,
     callableId: CallableId,
-): FirSimpleFunction {
+): FirNamedFunction {
     val transformer = FirFunctionCopier(original.symbol, ownerSymbol)
 
-    val functionCopy = buildSimpleFunctionCopy(original) {
-        symbol = FirNamedFunctionSymbol(callableId)
-        origin = Key.origin
-        this.moduleData = ownerSymbol.moduleData
+    val functionCopy =
+        buildNamedFunctionCopy(original) {
+            symbol = FirNamedFunctionSymbol(callableId)
+            origin = Key.origin
+            this.moduleData = ownerSymbol.moduleData
 
-        with(transformer) {
-            dispatchReceiverType = original.dispatchReceiverType?.replaceType()
+            with(transformer) {
+                dispatchReceiverType = original.dispatchReceiverType?.replaceType()
+            }
         }
-    }
 
-    return functionCopy.transformChildren(transformer, Unit) as FirSimpleFunction
+    return functionCopy.transformChildren(transformer, Unit) as FirNamedFunction
 }

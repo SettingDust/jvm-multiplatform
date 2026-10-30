@@ -19,68 +19,73 @@ import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.SpecialNames
 
-class ClassExtensionFirDeclarations(session: FirSession, extensionFinder: LazyExtensionFinder) :
-    FirDeclarationGenerationExtension(session) {
+class ClassExtensionFirDeclarations(
+    session: FirSession,
+    extensionFinder: LazyExtensionFinder,
+) : FirDeclarationGenerationExtension(session) {
     private val resolver = FirClassExtensionResolver(session, extensionFinder)
     private val compiledExtensions = hashMapOf<ClassId, List<CompiledExtensionInfo>>()
 
     @OptIn(SymbolInternals::class)
-    private fun compiledExtensions(owner: FirClassSymbol<*>) = compiledExtensions.computeIfAbsent(owner.classId) {
-        val extensions = resolver.getExtensions(owner)
+    private fun compiledExtensions(owner: FirClassSymbol<*>) =
+        compiledExtensions.computeIfAbsent(owner.classId) {
+            val extensions = resolver.getExtensions(owner)
 
-        val firBuilderContext = Context<LighterASTNode>().apply {
-            packageFqName = owner.classId.packageFqName
-            className = owner.classId.relativeClassName
-            dispatchReceiverTypesStack.push(owner.constructStarProjectedType())
-        }
+            val firBuilderContext =
+                Context<LighterASTNode>().apply {
+                    packageFqName = owner.classId.packageFqName
+                    className = owner.classId.relativeClassName
+                    dispatchReceiverTypesStack.push(owner.constructStarProjectedType())
+                }
 
-        val results = mutableListOf<CompiledExtensionInfo>()
+            val results = mutableListOf<CompiledExtensionInfo>()
 
-        for (extension in extensions) {
-            val info = extension.info
+            for (extension in extensions) {
+                val info = extension.info
 
-            val functions = mutableListOf<FirSimpleFunction>()
-            val properties = mutableListOf<FirProperty>()
-            val constructors = mutableListOf<FirConstructor>()
-            val nestedClassifiers = mutableListOf<FirRegularClass>()
+                val functions = mutableListOf<FirNamedFunction>()
+                val properties = mutableListOf<FirProperty>()
+                val constructors = mutableListOf<FirConstructor>()
+                val nestedClassifiers = mutableListOf<FirRegularClass>()
 
-            val builder = LightTreeRawFirDeclarationBuilder(
-                session,
-                session.kotlinScopeProvider,
-                info.treeStructure,
-                firBuilderContext
-            )
+                val builder =
+                    LightTreeRawFirDeclarationBuilder(
+                        session,
+                        session.kotlinScopeProvider,
+                        info.treeStructure,
+                        firBuilderContext,
+                    )
 
-            for (function in info.functions) {
-                val firFunction = builder.convertFunctionDeclaration(function) as FirSimpleFunction
+                for (function in info.functions) {
+                    val firFunction = builder.convertFunctionDeclaration(function) as FirNamedFunction
 
-                functions.add(firFunction)
-            }
+                    functions.add(firFunction)
+                }
 
-            for (property in info.properties) {
-                val firProperty = builder.convertPropertyDeclaration(property) as FirProperty
+                for (property in info.properties) {
+                    val firProperty = builder.convertPropertyDeclaration(property) as FirProperty
 
-                properties.add(firProperty)
-            }
+                    properties.add(firProperty)
+                }
 
-            results.add(
-                CompiledExtensionInfo(
-                    extension,
-                    functions,
-                    properties,
-                    constructors,
-                    nestedClassifiers,
+                results.add(
+                    CompiledExtensionInfo(
+                        extension,
+                        functions,
+                        properties,
+                        constructors,
+                        nestedClassifiers,
+                    ),
                 )
-            )
-        }
+            }
 
-        results
-    }
+            results
+        }
 
     override fun generateNestedClassLikeDeclaration(
         owner: FirClassSymbol<*>,
         name: Name,
-        context: NestedClassGenerationContext
+        context: NestedClassGenerationContext,
     ): FirClassLikeSymbol<*>? {
         for (info in compiledExtensions(owner)) {
             val classifier = info.nestedClassifiers.firstOrNull { it.name == name } ?: continue
@@ -140,28 +145,28 @@ class ClassExtensionFirDeclarations(session: FirSession, extensionFinder: LazyEx
 
     override fun getCallableNamesForClass(
         classSymbol: FirClassSymbol<*>,
-        context: MemberGenerationContext
+        context: MemberGenerationContext,
     ): Set<Name> {
         val compiledExtensions = compiledExtensions(context.owner)
 
-        val names = compiledExtensions.flatMap { extension ->
-            extension.functions.map { it.name } + extension.properties.map { it.name } + listOfNotNull(
-                SpecialNames.INIT.takeIf { extension.constructors.isNotEmpty() })
-        }
+        val names =
+            compiledExtensions.flatMap { extension ->
+                extension.functions.map { it.name } + extension.properties.map { it.name } +
+                    listOfNotNull(SpecialNames.INIT.takeIf { extension.constructors.isNotEmpty() })
+            }
 
         return names.toSet()
     }
 
     override fun getNestedClassifiersNames(
         classSymbol: FirClassSymbol<*>,
-        context: NestedClassGenerationContext
-    ): Set<Name> {
-        return compiledExtensions(classSymbol).flatMapTo(hashSetOf()) {
+        context: NestedClassGenerationContext,
+    ): Set<Name> =
+        compiledExtensions(classSymbol).flatMapTo(hashSetOf()) {
             it.nestedClassifiers.map {
                 it.name
             }
         }
-    }
 
     internal object Key : GeneratedDeclarationKey()
 }

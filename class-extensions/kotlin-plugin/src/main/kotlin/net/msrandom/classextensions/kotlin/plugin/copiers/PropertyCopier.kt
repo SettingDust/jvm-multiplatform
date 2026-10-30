@@ -67,7 +67,6 @@ fun copyProperty(
                 origin = Key.origin
                 attributes = backingField.attributes
                 returnTypeRef = backingField.returnTypeRef
-                deprecationsProvider = backingField.deprecationsProvider
                 name = backingField.name
                 isVar = backingField.isVar
                 isVal = backingField.isVal

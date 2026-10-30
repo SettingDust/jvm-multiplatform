@@ -35,3 +35,13 @@ publishing {
         }
     }
 }
+
+tasks.test {
+    useJUnit()
+    javaLauncher.set(javaToolchains.launcherFor { languageVersion.set(JavaLanguageVersion.of(21)) })
+    dependsOn(tasks.jar)
+    systemProperty("extensions.plugin.jar", tasks.jar.get().archiveFile.get().asFile.absolutePath)
+    doFirst {
+        systemProperty("extensions.compiler.classpath", (sourceSets.test.get().output + configurations.testRuntimeClasspath.get()).asPath)
+    }
+}

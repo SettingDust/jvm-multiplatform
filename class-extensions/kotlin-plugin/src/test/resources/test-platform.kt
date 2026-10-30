@@ -24,3 +24,9 @@ class AExtension : I {
         return a + c + local
     }
 }
+
+@ClassExtension(PackageTarget::class)
+class PackageExtension {
+    @ExtensionInject
+    fun packageResolved(): Int = 23
+}
