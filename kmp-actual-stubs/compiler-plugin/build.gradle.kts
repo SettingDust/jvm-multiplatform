@@ -68,10 +68,11 @@ tasks.test {
     )
     val p4Replay = providers.gradleProperty("p4Replay").map(String::toBoolean).orElse(false)
     systemProperty("p4.replay", p4Replay.get())
+    systemProperty("p4.fixture", layout.projectDirectory.dir("integration-test/p4").asFile.absolutePath)
     systemProperty(
         "p4.root",
         layout.buildDirectory
-            .dir("p4-final-acceptance")
+            .dir("tmp/p4-final-acceptance")
             .get()
             .asFile.absolutePath,
     )

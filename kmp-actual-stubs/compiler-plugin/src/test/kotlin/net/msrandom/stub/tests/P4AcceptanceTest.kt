@@ -12,6 +12,7 @@ import kotlin.test.*
 /** Fresh callable and real Cloche acceptance; no prior build output is an input. */
 class P4AcceptanceTest {
     private val root = File(requireNotNull(System.getProperty("p4.root")))
+    private val fixture = File(requireNotNull(System.getProperty("p4.fixture")))
     private val plugin = File(requireNotNull(System.getProperty("callable.plugin")))
     private val clocheSource = File(requireNotNull(System.getProperty("p4.clocheSource")))
     private val consumer = File(root, "consumer")
@@ -50,7 +51,7 @@ class P4AcceptanceTest {
         )) {
             File(root, path).apply {
                 parentFile.mkdirs()
-                writeBytes(requireNotNull(this@P4AcceptanceTest.javaClass.getResourceAsStream("/p4/$path")) { path }.use { it.readBytes() })
+                writeBytes(File(fixture, path).readBytes())
             }
         }
         File(cloche, "build.gradle.kts").appendText(
