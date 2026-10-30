@@ -1,0 +1,13 @@
+pluginManagement {
+    repositories {
+        exclusiveContent {
+            forRepository { maven { url = uri(providers.gradleProperty('ciMavenDirectory').get()) } }
+            filter {
+                includeGroup('net.msrandom.classpath-api-stubs')
+                includeModule('net.msrandom', 'classpath-api-stubs')
+            }
+        }
+        mavenCentral()
+    }
+}
+rootProject.name = 'ci-maven-plugin-consumer'

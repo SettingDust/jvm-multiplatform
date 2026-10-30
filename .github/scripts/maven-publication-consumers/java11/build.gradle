@@ -1,0 +1,46 @@
+plugins { id 'java' }
+java { toolchain.languageVersion = JavaLanguageVersion.of(11) }
+repositories {
+    exclusiveContent {
+        forRepository {
+            maven {
+                url = uri(providers.gradleProperty('ciMavenDirectory').get())
+                metadataSources { gradleMetadata() }
+            }
+        }
+        filter { includeModule('net.msrandom', 'java-processor-util') }
+    }
+    mavenCentral()
+}
+dependencies { implementation 'net.msrandom:java-processor-util:1.0.0' }
+configurations.runtimeClasspath.attributes {
+    attribute(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, 11)
+    attribute(Attribute.of('org.jetbrains.kotlin.platform.type', String), 'jvm')
+}
+tasks.register('verifyJava11', JavaExec) {
+    dependsOn tasks.classes
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'VerifyFeature'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(11) }
+    doLast {
+        def artifacts = configurations.runtimeClasspath.incoming.artifacts.artifacts.findAll {
+            it.id.componentIdentifier instanceof ModuleComponentIdentifier &&
+                it.id.componentIdentifier.group == 'net.msrandom' && it.id.componentIdentifier.module == 'java-processor-util'
+        }
+        assert artifacts.size() == 2
+        assert artifacts.every { it.variant.displayName.contains('java11RuntimeElements') }
+        assert artifacts.every { it.variant.attributes.getAttribute(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE) == 11 }
+        def feature = artifacts.find { it.file.name == 'java-processor-util-1.0.0-java11.jar' }
+        assert feature != null
+        artifacts.each {
+            def original = new File(providers.gradleProperty('ciMavenDirectory').get(), 'net/msrandom/java-processor-util/1.0.0/' + it.file.name)
+            assert it.file.canonicalFile == original.canonicalFile
+            assert java.security.MessageDigest.isEqual(it.file.bytes, original.bytes)
+            println "CI_JAVA11_ORIGIN artifact=${it.file.canonicalFile}"
+        }
+        new java.util.jar.JarFile(feature.file).withCloseable { jar ->
+            assert jar.getJarEntry('net/msrandom/multiplatform/java11/Java11PlatformHelper.class') != null
+        }
+        println "CI_JAVA11_CONSUMED variants=${artifacts*.variant*.displayName} artifacts=${artifacts*.file} compiler=${tasks.compileJava.javaCompiler.get().metadata.installationPath}"
+    }
+}

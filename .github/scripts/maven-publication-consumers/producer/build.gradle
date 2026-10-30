@@ -1,0 +1,19 @@
+plugins {
+    id 'java-gradle-plugin'
+    id 'maven-publish'
+}
+group = providers.gradleProperty('fixtureGroup').getOrElse('local.fixture')
+version = providers.gradleProperty('fixtureVersion').getOrElse('1.0.0')
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(8)
+    if (!providers.gradleProperty('fixtureWithoutSources').isPresent()) withSourcesJar()
+}
+gradlePlugin {
+    plugins {
+        fixture {
+            id = 'local.fixture.producer'
+            implementationClass = 'FixturePlugin'
+        }
+    }
+}
+apply from: providers.gradleProperty('ciMavenScript').get()

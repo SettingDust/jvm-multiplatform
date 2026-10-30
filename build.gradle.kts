@@ -5,6 +5,8 @@ plugins {
     id("org.jetbrains.intellij.platform") version "2.2.1" apply false
 }
 
+apply(from = "gradle/maven-publication-ci.gradle.kts")
+
 subprojects {
     buildscript {
         configurations.classpath {

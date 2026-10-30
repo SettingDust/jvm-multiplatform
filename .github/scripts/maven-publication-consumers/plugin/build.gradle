@@ -1,0 +1,19 @@
+plugins { id 'net.msrandom.classpath-api-stubs' version '0.1.0+terrarium.0.1.12' }
+
+tasks.register('verifyPlugin') {
+    doLast {
+        assert plugins.getPlugin('net.msrandom.classpath-api-stubs') instanceof net.msrandom.stubs.ClasspathApiStubsPlugin
+        assert tasks.named('generateStubApi').get() instanceof net.msrandom.stubs.GenerateStubApi
+        def implementation = new File(net.msrandom.stubs.ClasspathApiStubsPlugin.protectionDomain.codeSource.location.toURI())
+        assert implementation.isFile()
+        def original = new File(providers.gradleProperty('ciMavenDirectory').get(),
+            'net/msrandom/classpath-api-stubs/0.1.0+terrarium.0.1.12/classpath-api-stubs-0.1.0+terrarium.0.1.12.jar')
+        def resolved = buildscript.configurations.classpath.resolvedConfiguration.resolvedArtifacts.find {
+            it.moduleVersion.id.group == 'net.msrandom' && it.name == 'classpath-api-stubs'
+        }
+        assert resolved != null && resolved.file.canonicalFile == original.canonicalFile
+        println "CI_PLUGIN_ORIGIN artifact=${resolved.file.canonicalFile}"
+        assert java.security.MessageDigest.isEqual(implementation.bytes, original.bytes)
+        println "CI_PLUGIN_CONSUMED id=net.msrandom.classpath-api-stubs implementation=$implementation candidate=$original gradle=${gradle.gradleVersion} java=${System.getProperty('java.runtime.version')}"
+    }
+}
