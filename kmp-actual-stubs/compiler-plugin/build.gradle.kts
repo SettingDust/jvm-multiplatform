@@ -43,6 +43,7 @@ val p4ObserverJar = tasks.register<Jar>("p4ObserverJar") {
 }
 
 tasks.test {
+    javaLauncher.set(javaToolchains.launcherFor { languageVersion.set(JavaLanguageVersion.of(21)) })
     useJUnitPlatform()
     val annotationsJar = project(":kmp-actual-stub-annotations").tasks.named<Jar>("jar")
     dependsOn(tasks.jar, annotationsJar)

@@ -34,7 +34,7 @@ dependencies {
 }
 configurations.configureEach {
     resolutionStrategy.eachDependency {
-        if (requested.group == 'org.jetbrains.kotlin') useVersion('2.2.20')
+        if (requested.group == 'org.jetbrains.kotlin') useVersion('2.4.10')
     }
     exclude group: 'net.msrandom', module: 'kmp-actual-stubs-compiler-plugin'
     exclude group: 'net.msrandom', module: 'kmp-stub-annotations'
@@ -56,7 +56,7 @@ apply from: 'observe.gradle'
 tasks.withType(net.msrandom.stubs.GenerateStubApi).configureEach { classpaths.set([[]]) }
 tasks.register('recordProduct') {
     doLast {
-        println "P4_GRADLE=${gradle.gradleVersion} JVM=${System.getProperty('java.version')}"
+        println "P4_GRADLE=${gradle.gradleVersion} JVM=${System.getProperty('java.version')} HOME=${System.getProperty('java.home')} VENDOR=${System.getProperty('java.vendor')}"
         [org.jetbrains.kotlin.gradle.plugin.KotlinPluginWrapper, earth.terrarium.cloche.ClochePlugin, net.msrandom.virtualsourcesets.JavaVirtualSourceSetsPlugin].each {
             println "P4_LOADED ${it.name} ${it.protectionDomain.codeSource.location}"
         }

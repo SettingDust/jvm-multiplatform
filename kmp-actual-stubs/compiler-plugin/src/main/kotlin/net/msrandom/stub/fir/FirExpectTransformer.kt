@@ -27,7 +27,10 @@ import org.jetbrains.kotlin.name.StandardClassIds
 import org.jetbrains.kotlin.types.ConstantValueKind
 
 @OptIn(org.jetbrains.kotlin.fir.symbols.SymbolInternals::class)
-internal class FirExpectTransformer(session: FirSession, private val inputs: CallableInputs) : FirStatusTransformerExtension(session) {
+internal class FirExpectTransformer(
+    session: FirSession,
+    private val inputs: CallableInputs,
+) : FirStatusTransformerExtension(session) {
     private val headers = CallableHeaders(inputs)
 
     private fun missing(declaration: FirCallableDeclaration): Boolean {
@@ -36,23 +39,25 @@ internal class FirExpectTransformer(session: FirSession, private val inputs: Cal
         return candidates.isEmpty() || candidates.all { headers.matches(declaration, it, session) == false }
     }
 
-    override fun needTransformStatus(declaration: FirDeclaration): Boolean {
-        return declaration.source.getModifierList()?.let { KtTokens.EXPECT_KEYWORD in it } ?: false
-    }
+    override fun needTransformStatus(declaration: FirDeclaration): Boolean =
+        declaration.source.getModifierList()?.let { KtTokens.EXPECT_KEYWORD in it } ?: false
 
     override fun transformStatus(
         status: FirDeclarationStatus,
-        function: FirSimpleFunction,
+        function: FirNamedFunction,
         containingClass: FirClassLikeSymbol<*>?,
-        isLocal: Boolean
+        isLocal: Boolean,
     ): FirDeclarationStatus {
         if (containingClass == null) {
             if (!missing(function)) return status
-        } else if (inputs.classMissing(containingClass.fir as? FirRegularClass ?: return status, session) != true) return status
+        } else if (inputs.classMissing(containingClass.fir as? FirRegularClass ?: return status, session) != true) {
+            return status
+        }
         function.isGeneratedStub = true
-        addSuppressions(function,
+        addSuppressions(
+            function,
             FirErrors.NON_MEMBER_FUNCTION_NO_BODY,
-            FirErrors.NON_ABSTRACT_FUNCTION_WITH_NO_BODY
+            FirErrors.NON_ABSTRACT_FUNCTION_WITH_NO_BODY,
         )
         return status.transform { isExpect = false }
     }
@@ -61,13 +66,16 @@ internal class FirExpectTransformer(session: FirSession, private val inputs: Cal
         status: FirDeclarationStatus,
         property: FirProperty,
         containingClass: FirClassLikeSymbol<*>?,
-        isLocal: Boolean
+        isLocal: Boolean,
     ): FirDeclarationStatus {
         if (containingClass == null) {
             if (!missing(property)) return status
-        } else if (inputs.classMissing(containingClass.fir as? FirRegularClass ?: return status, session) != true) return status
+        } else if (inputs.classMissing(containingClass.fir as? FirRegularClass ?: return status, session) != true) {
+            return status
+        }
         property.isGeneratedStub = true
-        addSuppressions(property,
+        addSuppressions(
+            property,
             FirErrors.MUST_BE_INITIALIZED,
             FirErrors.EXTENSION_PROPERTY_MUST_HAVE_ACCESSORS_OR_BE_ABSTRACT,
         )
@@ -78,14 +86,15 @@ internal class FirExpectTransformer(session: FirSession, private val inputs: Cal
         status: FirDeclarationStatus,
         regularClass: FirRegularClass,
         containingClass: FirClassLikeSymbol<*>?,
-        isLocal: Boolean
+        isLocal: Boolean,
     ): FirDeclarationStatus {
         if (!inputs.classMissing(regularClass, session)) return status
         regularClass.isGeneratedStub = true
 
         regularClass.processAllDeclarations(session) { symbol ->
             val declaration = symbol.fir as? FirDeclaration ?: return@processAllDeclarations
-            addSuppressions(declaration,
+            addSuppressions(
+                declaration,
                 FirErrors.NON_ABSTRACT_FUNCTION_WITH_NO_BODY,
                 FirErrors.MUST_BE_INITIALIZED,
                 FirErrors.MUST_BE_INITIALIZED_OR_BE_ABSTRACT,
@@ -96,38 +105,52 @@ internal class FirExpectTransformer(session: FirSession, private val inputs: Cal
         return status.transform { isExpect = false }
     }
 
-    private fun addSuppressions(declaration: FirDeclaration, vararg diagnostics: AbstractKtDiagnosticFactory) {
+    private fun addSuppressions(
+        declaration: FirDeclaration,
+        vararg diagnostics: AbstractKtDiagnosticFactory,
+    ) {
         val existingSuppress = declaration.getAnnotationByClassId(StandardClassIds.Annotations.Suppress, session)
-        val existingSuppressions = existingSuppress?.getStringArrayArgument(StandardClassIds.Annotations.ParameterNames.suppressNames, session)
-        val newSuppress = buildAnnotation {
-            annotationTypeRef = StandardClassIds.Annotations.Suppress.createConeType(session).toFirResolvedTypeRef()
-            argumentMapping = buildAnnotationArgumentMapping {
+        val existingSuppressions = existingSuppress?.getStringArrayArgument(StandardClassIds.Annotations.ParameterNames.suppressNames)
+        val newSuppress =
+            buildAnnotation {
+                annotationTypeRef =
+                    StandardClassIds.Annotations.Suppress
+                        .createConeType(session)
+                        .toFirResolvedTypeRef()
+                argumentMapping =
+                    buildAnnotationArgumentMapping {
+                        source = declaration.source?.fakeElement(KtFakeSourceElementKind.PluginGenerated)
+                        mapping[StandardClassIds.Annotations.ParameterNames.suppressNames] =
+                            buildVarargArgumentsExpression {
+                                coneTypeOrNull =
+                                    session.builtinTypes.stringType.coneType
+                                        .createArrayType()
+                                coneElementTypeOrNull = session.builtinTypes.stringType.coneType
+                                source = declaration.source?.fakeElement(KtFakeSourceElementKind.PluginGenerated)
+
+                                for (factory in diagnostics) {
+                                    arguments +=
+                                        buildLiteralExpression(
+                                            declaration.source?.fakeElement(KtFakeSourceElementKind.PluginGenerated),
+                                            ConstantValueKind.String,
+                                            factory.name,
+                                            setType = true,
+                                        )
+                                }
+
+                                existingSuppressions?.forEach {
+                                    arguments +=
+                                        buildLiteralExpression(
+                                            declaration.source?.fakeElement(KtFakeSourceElementKind.PluginGenerated),
+                                            ConstantValueKind.String,
+                                            it,
+                                            setType = true,
+                                        )
+                                }
+                            }
+                    }
                 source = declaration.source?.fakeElement(KtFakeSourceElementKind.PluginGenerated)
-                mapping[StandardClassIds.Annotations.ParameterNames.suppressNames] = buildVarargArgumentsExpression {
-                    coneTypeOrNull = session.builtinTypes.stringType.coneType.createArrayType()
-                    coneElementTypeOrNull = session.builtinTypes.stringType.coneType
-                    source = declaration.source?.fakeElement(KtFakeSourceElementKind.PluginGenerated)
-
-                    for (factory in diagnostics) {
-                        arguments += buildLiteralExpression(
-                            declaration.source?.fakeElement(KtFakeSourceElementKind.PluginGenerated),
-                            ConstantValueKind.String,
-                            factory.name,
-                            setType = true
-                        )
-                    }
-
-                    existingSuppressions?.forEach {
-                        arguments += buildLiteralExpression(
-                            declaration.source?.fakeElement(KtFakeSourceElementKind.PluginGenerated),
-                            ConstantValueKind.String,
-                            it, setType = true
-                        )
-                    }
-                }
             }
-            source = declaration.source?.fakeElement(KtFakeSourceElementKind.PluginGenerated)
-        }
 
         val mutable = declaration.annotations.toMutableList()
         existingSuppress?.let(mutable::remove)
@@ -135,5 +158,4 @@ internal class FirExpectTransformer(session: FirSession, private val inputs: Cal
 
         declaration.replaceAnnotations(mutable)
     }
-
 }

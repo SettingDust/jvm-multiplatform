@@ -96,7 +96,7 @@ class CallableMatchingTest {
         siblingFiles: Map<String, String> = emptyMap(),
         lineSeparator: String? = null,
     ): Result {
-        assertEquals("2.2.20", KotlinCompilerVersion.VERSION)
+        assertEquals("2.4.10", KotlinCompilerVersion.VERSION)
         val dir = File(root, name)
         dir.deleteRecursively()
         dir.mkdirs()
@@ -197,7 +197,11 @@ class CallableMatchingTest {
                 Services.EMPTY,
                 compiler.createArguments().also { compiler.parseArguments(argv.toTypedArray(), it) },
             )
-        File(dir, "compile.log").writeText("${argv.joinToString("\n")}\nEXIT=$exit\n$messages")
+        File(dir, "compile.log").writeText(
+            "compiler=${KotlinCompilerVersion.VERSION}\ncompilerSource=${K2JVMCompiler::class.java.protectionDomain.codeSource.location}\n" +
+                "java.home=${System.getProperty("java.home")}\njava.vendor=${System.getProperty("java.vendor")}\njava.version=${System.getProperty("java.version")}\n" +
+                "${argv.joinToString("\n")}\nEXIT=$exit\n$messages",
+        )
         println("$name EXIT=$exit\n$messages")
         assertNotEquals(ExitCode.INTERNAL_ERROR, exit, messages.toString())
         val classes =

@@ -1,18 +1,20 @@
 package net.msrandom.stub.fir
 
 import org.jetbrains.kotlin.KtIoFileSourceFile
+import org.jetbrains.kotlin.diagnostics.KtRegisteredDiagnosticFactoriesStorage
 import org.jetbrains.kotlin.config.HmppCliModule
 import org.jetbrains.kotlin.fir.*
 import org.jetbrains.kotlin.fir.declarations.*
 import org.jetbrains.kotlin.fir.java.FirCliSession
 import org.jetbrains.kotlin.fir.java.FirJavaVisibilityChecker
+import org.jetbrains.kotlin.fir.resolve.FirJvmDefaultImportsProvider
+import org.jetbrains.kotlin.fir.scopes.*
+import org.jetbrains.kotlin.fir.scopes.impl.*
 import org.jetbrains.kotlin.fir.lightTree.LightTree2Fir
 import org.jetbrains.kotlin.fir.resolve.*
 import org.jetbrains.kotlin.fir.resolve.providers.*
 import org.jetbrains.kotlin.fir.resolve.providers.impl.FirCompositeSymbolProvider
 import org.jetbrains.kotlin.fir.resolve.providers.impl.FirProviderImpl
-import org.jetbrains.kotlin.fir.scopes.*
-import org.jetbrains.kotlin.fir.scopes.impl.*
 import org.jetbrains.kotlin.fir.session.*
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.toSourceLinesMapping
@@ -43,14 +45,12 @@ internal class CallableHeaderFiles(
                 )
             moduleData.bindSession(detached)
             detached.registerModuleData(moduleData)
-            detached.registerCliCompilerOnlyComponents(base.languageVersionSettings)
-            detached.registerCommonComponents(base.languageVersionSettings)
-            detached.registerDefaultComponents()
-            detached.registerResolveComponents()
+            detached.registerCliCompilerAndCommonComponents(base.languageVersionSettings, false)
+            detached.registerResolveComponents(KtRegisteredDiagnosticFactoriesStorage())
             detached.register(FirKotlinScopeProvider::class, base.kotlinScopeProvider)
             detached.register(FirVisibilityChecker::class, FirJavaVisibilityChecker)
             detached.register(FirPlatformClassMapper::class, FirJavaClassMapper(detached))
-            detached.register(FirDefaultImportProviderHolder::class, FirDefaultImportProviderHolder(FirJvmDefaultImportProvider))
+            detached.register(FirDefaultImportsProviderHolder::class, FirDefaultImportsProviderHolder.of(FirJvmDefaultImportsProvider))
             FirSessionConfigurator(detached).configure()
             detached.registerCommonComponentsAfterExtensionsAreConfigured()
             val provider = FirProviderImpl(detached, detached.kotlinScopeProvider)

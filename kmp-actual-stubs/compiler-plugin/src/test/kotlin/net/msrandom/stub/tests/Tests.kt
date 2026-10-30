@@ -53,9 +53,12 @@ class Tests {
         val diagnostics = ByteArrayOutputStream()
         val exit = PrintStream(diagnostics).use { K2JVMCompiler().exec(it, *arguments) }
         val log = "compiler=${KotlinCompilerVersion.VERSION} jvm=${System.getProperty("java.version")}\n" +
+            "compilerSource=${K2JVMCompiler::class.java.protectionDomain.codeSource.location}\n" +
+            "java.home=${System.getProperty("java.home")}\njava.vendor=${System.getProperty("java.vendor")}\n" +
             "${arguments.joinToString("\n")}\nEXIT=$exit\n$diagnostics"
         File(root, "compile.log").writeText(log)
         println(log)
+        assertEquals("2.4.10", KotlinCompilerVersion.VERSION, log)
         assertEquals(ExitCode.OK, exit, log)
         for (name in listOf("TestKt", "ExpectAnnotation", "ExpectClass", "ExpectItf", "ExpectObj", "ExpectEnum")) {
             assertTrue(File(output, "$name.class").isFile, "Missing generated $name.class\n$log")

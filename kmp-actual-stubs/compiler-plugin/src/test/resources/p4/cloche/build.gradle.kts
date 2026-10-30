@@ -3,14 +3,14 @@ import org.jetbrains.kotlin.gradle.dsl.JvmDefaultMode
 buildscript {
     configurations.classpath {
         resolutionStrategy.eachDependency {
-            if (requested.group == "org.jetbrains.kotlin") useVersion("2.2.20")
+            if (requested.group == "org.jetbrains.kotlin") useVersion("2.4.10")
         }
     }
 }
 
 plugins {
-    kotlin("plugin.serialization") version "2.2.20"
-    id("com.google.devtools.ksp") version "2.2.20-2.0.4"
+    kotlin("plugin.serialization") version "2.4.10"
+    id("com.google.devtools.ksp") version "2.3.12"
 
     `kotlin-dsl`
     `java-gradle-plugin`
@@ -37,9 +37,6 @@ repositories {
 
     maven(url = "https://maven.fabricmc.net/")
     maven(url = "https://maven.neoforged.net/releases")
-
-
-
 }
 
 java {
@@ -67,7 +64,7 @@ dependencies {
 
     implementation(group = "org.apache.commons", name = "commons-lang3", version = "3.18.0")
 
-    implementation("org.jetbrains.kotlin:kotlin-gradle-plugin:2.2.20")
+    implementation("org.jetbrains.kotlin:kotlin-gradle-plugin:2.4.10")
 
     ksp(group = "dev.zacsweers.autoservice", name = "auto-service-ksp", version = "1.2.0")
     compileOnly(group = "com.google.auto.service", name = "auto-service-annotations", version = "1.1.1")
@@ -80,6 +77,8 @@ dependencies {
 
 tasks.compileKotlin {
     compilerOptions {
+        languageVersion.set(org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_2_1)
+        apiVersion.set(org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_2_1)
         jvmDefault = JvmDefaultMode.ENABLE
         compilerOptions.freeCompilerArgs.add("-Xcontext-receivers")
     }
@@ -108,9 +107,7 @@ kotlin {
 allprojects {
     configurations.configureEach {
         resolutionStrategy.eachDependency {
-            if (requested.group == "org.jetbrains.kotlin") useVersion("2.2.20")
+            if (requested.group == "org.jetbrains.kotlin") useVersion("2.4.10")
         }
     }
 }
-
-

@@ -1,8 +1,14 @@
+@file:Suppress("DEPRECATION_ERROR")
+
 package net.msrandom.stub.fir
 
 import java.io.File
 import org.jetbrains.kotlin.cli.common.allFiles
 import org.jetbrains.kotlin.cli.common.collectSources
+import org.jetbrains.kotlin.cli.jvm.compiler.VfsBasedProjectEnvironment
+import org.jetbrains.kotlin.cli.common.localfs.KotlinLocalFileSystem
+import org.jetbrains.kotlin.cli.jvm.compiler.jarfs.FastJarFileSystem
+import org.jetbrains.kotlin.load.kotlin.PackagePartProvider
 import org.jetbrains.kotlin.cli.common.CLIConfigurationKeys
 import org.jetbrains.kotlin.cli.common.config.addKotlinSourceRoot
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
@@ -30,13 +36,14 @@ internal class CallableInputs(private val configuration: CompilerConfiguration) 
     var declarations: List<Declaration> = emptyList(); private set
     private var ready = false
 
-    fun collect(project: Project): Boolean {
+    fun collect(projectEnvironment: VfsBasedProjectEnvironment): Boolean {
+        val project = projectEnvironment.project
         val messages = configuration.getNotNull(CommonConfigurationKeys.MESSAGE_COLLECTOR_KEY)
         try {
             require(PreprocessedVirtualFileFactoryExtension.getInstances(project).isEmpty()) {
                 "unsupported source preprocessor; rejected before expect conversion"
             }
-            val dirty = collectSources(configuration, project, messages).allFiles.toList()
+            val dirty = collectSources(configuration, projectEnvironment).allFiles.toList()
             require(!messages.hasErrors()) { "native source collection failed" }
             val structure = configuration.get(CommonConfigurationKeys.HMPP_MODULE_STRUCTURE)
             graph = structure
@@ -60,7 +67,7 @@ internal class CallableInputs(private val configuration: CompilerConfiguration) 
             val recovered = configuration.copy()
             recovered.put(CLIConfigurationKeys.CONTENT_ROOTS, mutableListOf())
             selected.forEach { (path, module) -> recovered.addKotlinSourceRoot(path, module !== modules.last(), module.name) }
-            val effective = collectSources(recovered, project, messages)
+            val effective = collectSources(recovered, projectEnvironment)
             sources = effective.allFiles.map { source ->
                 val path = canonical(requireNotNull(source.path))
                 Source(path, requireNotNull(selected[path]), StringUtil.convertLineSeparators(source.getContentsAsStream().bufferedReader().use { it.readText() }))

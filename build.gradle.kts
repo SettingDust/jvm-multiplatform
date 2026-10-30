@@ -1,7 +1,7 @@
 plugins {
     `embedded-kotlin` apply false
     `kotlin-dsl` apply false
-    id("com.google.devtools.ksp") version "$embeddedKotlinVersion-+" apply false
+    id("com.google.devtools.ksp") version "2.3.12" apply false
     id("org.jetbrains.intellij.platform") version "2.2.1" apply false
 }
 
