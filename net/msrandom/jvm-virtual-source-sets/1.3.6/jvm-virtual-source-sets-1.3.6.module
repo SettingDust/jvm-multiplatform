@@ -1,0 +1,84 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "net.msrandom",
+    "module": "jvm-virtual-source-sets",
+    "version": "1.3.6",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "9.8.2"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.environment": "standard-jvm",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "files": [
+        {
+          "name": "jvm-virtual-source-sets-1.3.6.jar",
+          "url": "jvm-virtual-source-sets-1.3.6.jar",
+          "size": 51845,
+          "sha512": "251f6da77d9e39d434dc7ea927dfa798cfb685ecf8a4f870fe957b1af6b5892689046bf65623d37d74bc8553c17bc1f8dd194aac746a774bca71ec619786879d",
+          "sha256": "f98b26912f7d37c49c37025e88cd1acf8d84bf246444756b7ec3a3e7d836f008",
+          "sha1": "7d3ebad1bd15a310fc1b870c308f9b7ee9d692e8",
+          "md5": "e03aacc0a86ab1b9408cbd1c04b70a92"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.environment": "standard-jvm",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "files": [
+        {
+          "name": "jvm-virtual-source-sets-1.3.6.jar",
+          "url": "jvm-virtual-source-sets-1.3.6.jar",
+          "size": 51845,
+          "sha512": "251f6da77d9e39d434dc7ea927dfa798cfb685ecf8a4f870fe957b1af6b5892689046bf65623d37d74bc8553c17bc1f8dd194aac746a774bca71ec619786879d",
+          "sha256": "f98b26912f7d37c49c37025e88cd1acf8d84bf246444756b7ec3a3e7d836f008",
+          "sha1": "7d3ebad1bd15a310fc1b870c308f9b7ee9d692e8",
+          "md5": "e03aacc0a86ab1b9408cbd1c04b70a92"
+        }
+      ]
+    },
+    {
+      "name": "sourcesElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "jvm-virtual-source-sets-1.3.6-sources.jar",
+          "url": "jvm-virtual-source-sets-1.3.6-sources.jar",
+          "size": 4232,
+          "sha512": "50c4902d8e87e20fcfa81e6de423bef8f1950cac91cd0ed089e4155699c30d56a2cda35010bebd3e1adcd39f48780dc0505b314349d931da73fa204df3790f38",
+          "sha256": "df5639398b3fbd10e94f2d7fbc85daf0dd814683253b70e0e339b93bd3d6c7ae",
+          "sha1": "8428b3bde95d3fa4cf4e5eac37e4577bad7821de",
+          "md5": "15fd30cb3ff567d41a34cd99e60bebd3"
+        }
+      ]
+    }
+  ]
+}

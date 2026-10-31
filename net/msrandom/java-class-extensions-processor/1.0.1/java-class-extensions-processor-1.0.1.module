@@ -1,0 +1,116 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "net.msrandom",
+    "module": "java-class-extensions-processor",
+    "version": "1.0.1",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "9.8.2"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.environment": "standard-jvm",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "dependencies": [
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.4.10"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "java-class-extensions-processor-1.0.1.jar",
+          "url": "java-class-extensions-processor-1.0.1.jar",
+          "size": 12549,
+          "sha512": "2609c3e2b08e33fd6cb120cbc667286c92ee37ede487426951cf6e0c348ec4d55ed4e04f0f708a10a4be79771b46022c41b9aee90f3c3ade46f85d360ff15e8a",
+          "sha256": "819c0d27fea33c7c52bbddd6ba5808abb66fe7652af056d8dcc731598558bbb0",
+          "sha1": "6251f126dc4e3bbe207f8a8b167b7cf03e249e5e",
+          "md5": "42664161258f8a78d8c331b6d4bfd529"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.environment": "standard-jvm",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "dependencies": [
+        {
+          "group": "net.msrandom",
+          "module": "class-extension-annotations",
+          "version": {
+            "requires": "1.0.0"
+          }
+        },
+        {
+          "group": "net.msrandom",
+          "module": "java-processor-util",
+          "version": {
+            "requires": "1.0.0"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.4.10"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "java-class-extensions-processor-1.0.1.jar",
+          "url": "java-class-extensions-processor-1.0.1.jar",
+          "size": 12549,
+          "sha512": "2609c3e2b08e33fd6cb120cbc667286c92ee37ede487426951cf6e0c348ec4d55ed4e04f0f708a10a4be79771b46022c41b9aee90f3c3ade46f85d360ff15e8a",
+          "sha256": "819c0d27fea33c7c52bbddd6ba5808abb66fe7652af056d8dcc731598558bbb0",
+          "sha1": "6251f126dc4e3bbe207f8a8b167b7cf03e249e5e",
+          "md5": "42664161258f8a78d8c331b6d4bfd529"
+        }
+      ]
+    },
+    {
+      "name": "sourcesElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "java-class-extensions-processor-1.0.1-sources.jar",
+          "url": "java-class-extensions-processor-1.0.1-sources.jar",
+          "size": 2848,
+          "sha512": "8b50cf0efaad35b74425ede8ee81e320e68b9856dc61915ad9ff49cfb3ed2253acb7359e8e10ced19ec7b99000d2d961af3217dd75a568f8d745d8c4890742af",
+          "sha256": "ed666ecf30e08ef24d05f86c46510e202934fa94cb72860c133b946c3aa309ba",
+          "sha1": "67d9e9bb54af7b3309d17eac55cc8c579926dcf3",
+          "md5": "1e5c3e8c8f39d845185f0f651622042d"
+        }
+      ]
+    }
+  ]
+}

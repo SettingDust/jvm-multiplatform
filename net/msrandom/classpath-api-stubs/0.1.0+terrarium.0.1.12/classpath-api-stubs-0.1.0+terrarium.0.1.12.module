@@ -1,0 +1,93 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "net.msrandom",
+    "module": "classpath-api-stubs",
+    "version": "0.1.0+terrarium.0.1.12",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "9.8.2"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.environment": "standard-jvm",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "files": [
+        {
+          "name": "classpath-api-stubs-0.1.0+terrarium.0.1.12.jar",
+          "url": "classpath-api-stubs-0.1.0+terrarium.0.1.12.jar",
+          "size": 122911,
+          "sha512": "211ef72b124f1c196583f26c46d98bb36a26c774be1aca3ce8fd6c7fc34a72f0d13b9aa41364c23c70eccd608f7e250c47c1cded6a70f1def2a6feaa3cd4ddec",
+          "sha256": "e309772a4f09cf9cc26856eee0c975ee2a837ed2891fd1eaa052a3b842d80ca0",
+          "sha1": "896a43708103bc4f71ee54ea96144285f78bc60c",
+          "md5": "4c4dd74c51757af5df4b1f91dfee8c81"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.environment": "standard-jvm",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "dependencies": [
+        {
+          "group": "org.ow2.asm",
+          "module": "asm-tree",
+          "version": {
+            "requires": "9.7.1"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "classpath-api-stubs-0.1.0+terrarium.0.1.12.jar",
+          "url": "classpath-api-stubs-0.1.0+terrarium.0.1.12.jar",
+          "size": 122911,
+          "sha512": "211ef72b124f1c196583f26c46d98bb36a26c774be1aca3ce8fd6c7fc34a72f0d13b9aa41364c23c70eccd608f7e250c47c1cded6a70f1def2a6feaa3cd4ddec",
+          "sha256": "e309772a4f09cf9cc26856eee0c975ee2a837ed2891fd1eaa052a3b842d80ca0",
+          "sha1": "896a43708103bc4f71ee54ea96144285f78bc60c",
+          "md5": "4c4dd74c51757af5df4b1f91dfee8c81"
+        }
+      ]
+    },
+    {
+      "name": "sourcesElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "classpath-api-stubs-0.1.0+terrarium.0.1.12-sources.jar",
+          "url": "classpath-api-stubs-0.1.0+terrarium.0.1.12-sources.jar",
+          "size": 18414,
+          "sha512": "d81e6473c04be7c3fcf28e10f1835ec0eb2b0f299944f3ec5ce600e9cfe3711dfdfac85225deaeb2c224e9df60c49923f091d3f12502e10d6a02972b43c2bca0",
+          "sha256": "41e82203e4525cae8fc2fd695215d4430f82522e135a62b0f888df87051cd166",
+          "sha1": "7aba3360de8046edd6f20b63cdb640cef12110b4",
+          "md5": "7dc234dad92024df8cea18882a55225c"
+        }
+      ]
+    }
+  ]
+}

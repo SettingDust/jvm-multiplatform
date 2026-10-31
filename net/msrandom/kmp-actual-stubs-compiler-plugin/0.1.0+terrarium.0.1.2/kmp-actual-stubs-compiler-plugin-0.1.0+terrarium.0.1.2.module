@@ -1,0 +1,95 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "net.msrandom",
+    "module": "kmp-actual-stubs-compiler-plugin",
+    "version": "0.1.0+terrarium.0.1.2",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "9.8.2"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.environment": "standard-jvm",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "dependencies": [
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.4.10"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "kmp-actual-stubs-compiler-plugin-0.1.0+terrarium.0.1.2.jar",
+          "url": "kmp-actual-stubs-compiler-plugin-0.1.0+terrarium.0.1.2.jar",
+          "size": 83933,
+          "sha512": "614e7ec944f564c48b02dd8e62c61cbb39932d162c0b4dbc9b70f89bf4b20a2e41a25abcefbe68cb98cd2fe1a013229b172f18a99578e4c7be8b070e80a45f1c",
+          "sha256": "0644bcdcf8318b3751dd6db57e68b861bcbe3b6ee86f127ae662a48109d5c597",
+          "sha1": "5dcc1bb612001485600438c39e141c537ae74129",
+          "md5": "0cbf8dd7b17e490c3806d31b2250e37b"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.environment": "standard-jvm",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "dependencies": [
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-compiler-embeddable"
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.4.10"
+          }
+        }
+      ],
+      "dependencyConstraints": [
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-compiler-embeddable",
+          "version": {
+            "requires": "2.4.10"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "kmp-actual-stubs-compiler-plugin-0.1.0+terrarium.0.1.2.jar",
+          "url": "kmp-actual-stubs-compiler-plugin-0.1.0+terrarium.0.1.2.jar",
+          "size": 83933,
+          "sha512": "614e7ec944f564c48b02dd8e62c61cbb39932d162c0b4dbc9b70f89bf4b20a2e41a25abcefbe68cb98cd2fe1a013229b172f18a99578e4c7be8b070e80a45f1c",
+          "sha256": "0644bcdcf8318b3751dd6db57e68b861bcbe3b6ee86f127ae662a48109d5c597",
+          "sha1": "5dcc1bb612001485600438c39e141c537ae74129",
+          "md5": "0cbf8dd7b17e490c3806d31b2250e37b"
+        }
+      ]
+    }
+  ]
+}
