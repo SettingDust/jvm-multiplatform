@@ -26,7 +26,7 @@ import org.jetbrains.kotlin.load.kotlin.PackagePartProvider
 @OptIn(ExperimentalCompilerApi::class)
 @AutoService(CompilerPluginRegistrar::class)
 class StubCompilerPlugin : CompilerPluginRegistrar() {
-    override val pluginId: String = "net.msrandom.stub.actual"
+    override val pluginId: String = PLUGIN_ID
     override val supportsK2: Boolean = true
 
     override fun ExtensionStorage.registerExtensions(configuration: CompilerConfiguration) {

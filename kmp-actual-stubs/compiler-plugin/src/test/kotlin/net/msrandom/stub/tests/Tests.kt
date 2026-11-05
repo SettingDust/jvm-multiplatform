@@ -17,6 +17,13 @@ import org.jetbrains.org.objectweb.asm.tree.LdcInsnNode
 import org.jetbrains.org.objectweb.asm.tree.TypeInsnNode
 
 class Tests {
+    @OptIn(org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi::class)
+    @Test
+    fun `Plugin identity preserves fork ID`() {
+        assertEquals("net.msrandom.stub.actual", net.msrandom.stub.PLUGIN_ID)
+        assertEquals(net.msrandom.stub.PLUGIN_ID, net.msrandom.stub.StubCompilerPlugin().pluginId)
+    }
+
     @Test
     fun `Test Plugin`() {
         val plugin = File(requireNotNull(System.getProperty("callable.plugin")))
